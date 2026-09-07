@@ -29,7 +29,7 @@ export function FormDisclosure({
       {label}
     </summary>
     <div className={cn(
-      "z-30 mt-3 rounded-[18px] border border-[#dbe3ec] bg-white p-5",
+      "salesly-disclosure-panel z-30 mt-3 rounded-[18px] border border-[#dbe3ec] bg-white p-5",
       mode === "popover" && "w-[min(760px,calc(100vw-2rem))] shadow-[0_20px_60px_rgba(31,48,65,.13)] lg:absolute",
       mode === "inline" && "w-full bg-[#fbfcfe] shadow-none",
       mode === "popover" && align === "right" ? "lg:right-0" : mode === "popover" ? "lg:left-0" : ""

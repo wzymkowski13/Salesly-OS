@@ -1,6 +1,22 @@
-# Salesly OS v0.2
+# Salesly OS v0.3
 
 Prywatne centrum operacyjne dla dwóch użytkowników: zadania, kalendarz, CRM ubezpieczeniowy, historia klienta, odnowienia, rocznice i powiadomienia.
+
+
+## v0.3 — płynność, edycja i drag & drop
+
+Ta wersja skupia się na codziennym UX. Nie zmienia schematu Supabase.
+
+- optymistyczne przenoszenie zadań między statusami — karta zmienia kolumnę od razu, bez czekania na pełny refresh,
+- drag & drop zadań między kolumnami,
+- kliknięcie zadania otwiera pełny modal z podglądem i edycją,
+- kliknięcie wydarzenia lub zadania w kalendarzu otwiera pełną edycję,
+- drag & drop w kalendarzu pozwala przenieść pozycję na inny dzień,
+- nowy picker czasu: osobna godzina i minuty co 5 min + szybkie :00 / :15 / :30 / :45,
+- modalne formularze, mikroanimacje, animowane wejścia stron i lekki loading state,
+- przyciski dostały wyraźniejszy feedback po kliknięciu.
+
+Nowa zależność frontendu: `@dnd-kit/core`. Po skopiowaniu plików uruchom `npm install`.
 
 ## v0.2 — UI/UX refresh
 
