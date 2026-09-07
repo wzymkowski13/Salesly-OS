@@ -1,6 +1,9 @@
 export function SectionHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
-  return <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div><h1 className="text-2xl font-semibold tracking-tight text-zinc-950">{title}</h1>{description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}</div>
-    {action}
+  return <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[#22313c] sm:text-[30px]">{title}</h1>
+      {description && <p className="mt-1 text-sm text-[#71808c]">{description}</p>}
+    </div>
+    {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
   </div>;
 }

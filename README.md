@@ -1,6 +1,23 @@
-# Salesly OS v0.1
+# Salesly OS v0.2
 
-Prywatne centrum operacyjne dla dwóch użytkowników: taski, kalendarz, CRM ubezpieczeniowy, historia klienta, odnowienia, rocznice i powiadomienia.
+Prywatne centrum operacyjne dla dwóch użytkowników: zadania, kalendarz, CRM ubezpieczeniowy, historia klienta, odnowienia, rocznice i powiadomienia.
+
+## v0.2 — UI/UX refresh
+
+Ta wersja nie zmienia schematu bazy. To pełny lifting frontendu i codziennego flow:
+
+- branding Salesly i logo w panelu,
+- wyraźny, ciemny sidebar + jasna przestrzeń robocza,
+- aktywna pozycja nawigacji,
+- nazwa „Zadania” zamiast „Taski”,
+- nowy dashboard z dzisiejszymi spotkaniami z klientami,
+- kompaktowe przyciski szybkiego dodawania zamiast pełnych pasków formularzy,
+- przebudowany kalendarz z lekkimi kolorami i czytelnym aktywnym widokiem,
+- tabelowy, szybszy CRM,
+- odświeżona karta klienta, powiadomienia, odnowienia i login,
+- usunięte komentarze i teksty pomocnicze o „AI-owym” charakterze.
+
+Jeżeli aktualizujesz działające v0.1, nie uruchamiasz żadnych nowych migracji Supabase. Zachowaj własny `.env.local`, skopiuj pliki v0.2 nad projekt, a następnie commit + push do GitHub. Vercel zrobi redeploy automatycznie.
 
 ## Co jest w tej wersji
 
