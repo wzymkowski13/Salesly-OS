@@ -2,7 +2,20 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { DndContext, DragEndEvent, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { GripVertical } from "lucide-react";
@@ -20,6 +33,11 @@ import { cn } from "@/lib/utils";
 
 type ClientOption = { id: string; name: string };
 type ProfileOption = { id: string; full_name?: string | null; email?: string | null };
+
+const pointerFirstCollision: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  return pointerHits.length ? pointerHits : rectIntersection(args);
+};
 
 export type CalendarItem = {
   id: string;
@@ -65,9 +83,8 @@ function localDateTime(value?: string | null) {
 }
 
 function DraggableCalendarItem({ item, compact = false, onOpen }: { item: CalendarItem; compact?: boolean; onOpen: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `${item.kind}:${item.id}`, data: { item } });
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 20 } : undefined;
-  return <button ref={setNodeRef} style={style} type="button" onClick={onOpen} {...listeners} {...attributes} className={cn("group relative w-full cursor-grab border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-all duration-200 hover:-translate-y-px hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing", compact ? "truncate rounded-lg px-2 py-1.5 text-[11px] font-semibold" : "rounded-xl p-3", itemStyle(item), isDragging && "opacity-25")}>
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `${item.kind}:${item.id}`, data: { item } });
+  return <button ref={setNodeRef} type="button" onClick={onOpen} {...listeners} {...attributes} className={cn("group relative w-full cursor-grab touch-none select-none border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-[filter,box-shadow,opacity,transform] duration-150 hover:-translate-y-px hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing", compact ? "truncate rounded-lg px-2 py-1.5 text-[11px] font-semibold" : "rounded-xl p-3", itemStyle(item), isDragging && "opacity-25")}>
     {compact ? <><span className="mr-1 opacity-70">{item.start_time}</span>{item.title}</> : <>
       <div className="flex items-center justify-between gap-2"><div className="text-xs font-bold opacity-75">{item.start_time}</div><div className="flex items-center gap-1"><Badge className="bg-white/70" variant={item.kind==="task"?"neutral":"blue"}>{itemLabel(item)}</Badge><GripVertical size={13} className="opacity-0 transition group-hover:opacity-60"/></div></div>
       <div className="mt-1.5 text-sm font-bold">{item.title}</div>{item.clients?.name&&<div className="mt-1 text-xs opacity-75">{item.clients.name}</div>}
@@ -100,6 +117,7 @@ export function CalendarWorkspace({
   const [items, setItems] = useState(initialItems);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [activeWidth, setActiveWidth] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }));
@@ -114,6 +132,7 @@ export function CalendarWorkspace({
 
   function onDragEnd(event: DragEndEvent) {
     setActiveKey(null);
+    setActiveWidth(null);
     const overId = event.over ? String(event.over.id) : "";
     if (!overId.startsWith("day:")) return;
     const targetDate = overId.replace("day:", "");
@@ -182,7 +201,16 @@ export function CalendarWorkspace({
   const focus = parseISO(focusDate);
 
   return <>
-    <DndContext sensors={sensors} onDragStart={(event)=>setActiveKey(String(event.active.id))} onDragCancel={()=>setActiveKey(null)} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerFirstCollision}
+      onDragStart={(event)=>{
+        setActiveKey(String(event.active.id));
+        setActiveWidth(event.active.rect.current.initial?.width ?? null);
+      }}
+      onDragCancel={()=>{ setActiveKey(null); setActiveWidth(null); }}
+      onDragEnd={onDragEnd}
+    >
       {view === "month" ? <div className="overflow-x-auto rounded-[20px] border border-[#dfe6ee] bg-white shadow-[0_8px_28px_rgba(30,48,64,.035)] salesly-scrollbar">
         <div className="min-w-[850px]">
           <div className="grid grid-cols-7 border-b border-[#e8edf2] bg-[#f7f9fc] text-center text-[11px] font-bold uppercase tracking-[0.11em] text-[#8b98a3]">{["Pon","Wt","Śr","Czw","Pt","Sob","Nd"].map(day=><div key={day} className="p-3">{day}</div>)}</div>
@@ -200,7 +228,11 @@ export function CalendarWorkspace({
           <div className="space-y-2.5">{list.map(item=><DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} onOpen={()=>setSelectedKey(`${item.kind}:${item.id}`)}/>)}{!list.length&&<div className="rounded-xl border border-dashed border-[#dfe5eb] px-3 py-7 text-center text-xs text-[#9aa5ae]">Przeciągnij tutaj lub dodaj pozycję</div>}</div>
         </DroppableDay>})}
       </div>}
-      <DragOverlay dropAnimation={{ duration: 170, easing: "cubic-bezier(.2,.8,.2,1)" }}>{active ? <div className={cn("w-[250px] rotate-[1deg] rounded-xl border border-l-[3px] p-3 shadow-[0_18px_45px_rgba(28,44,60,.18)]",itemStyle(active))}><div className="text-xs font-bold opacity-70">{active.start_time} · {itemLabel(active)}</div><div className="mt-1 font-bold">{active.title}</div></div> : null}</DragOverlay>
+      <DragOverlay adjustScale={false} dropAnimation={{ duration: 140, easing: "cubic-bezier(.2,.8,.2,1)" }}>
+        {active ? <div style={{ width: activeWidth ?? undefined }} className={cn("rotate-[0.5deg] border border-l-[3px] shadow-[0_18px_45px_rgba(28,44,60,.18)]", view === "month" ? "truncate rounded-lg px-2 py-1.5 text-[11px] font-semibold" : "rounded-xl p-3", itemStyle(active))}>
+          {view === "month" ? <><span className="mr-1 opacity-70">{active.start_time}</span>{active.title}</> : <><div className="text-xs font-bold opacity-70">{active.start_time} · {itemLabel(active)}</div><div className="mt-1 font-bold">{active.title}</div></>}
+        </div> : null}
+      </DragOverlay>
     </DndContext>
 
     <Modal open={Boolean(selected)} onClose={()=>setSelectedKey(null)} title={selected?.title || "Pozycja kalendarza"} eyebrow={selected ? itemLabel(selected) : undefined}>

@@ -1,7 +1,16 @@
-# Salesly OS v0.3
+# Salesly OS v0.3.1
 
 Prywatne centrum operacyjne dla dwóch użytkowników: zadania, kalendarz, CRM ubezpieczeniowy, historia klienta, odnowienia, rocznice i powiadomienia.
 
+
+
+## v0.3.1 — drag & drop polish
+
+- kalendarz wybiera dzień docelowy na podstawie pozycji kursora,
+- przeciągany element zachowuje swój rozmiar zamiast „centrować się” pod kursorem,
+- cała karta zadania jest draggable między statusami,
+- przyciski na karcie nie uruchamiają drag & drop,
+- poprawiono wizualny feedback kolumn i dni docelowych.
 
 ## v0.3 — płynność, edycja i drag & drop
 

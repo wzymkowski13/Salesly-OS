@@ -2,7 +2,20 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { DndContext, DragEndEvent, DragOverlay, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { Check, Clock3, GripVertical, PauseCircle, PlayCircle } from "lucide-react";
 import { setTaskStatus, updateTask } from "@/lib/actions/tasks";
 import { Button } from "@/components/ui/button";
@@ -40,6 +53,11 @@ const columns = [
   ["done", "Gotowe", Check, "bg-[#f0f3f6] text-[#637480]"],
 ] as const;
 
+const pointerFirstCollision: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  return pointerHits.length ? pointerHits : rectIntersection(args);
+};
+
 function priorityLabel(priority: string) {
   return priority === "urgent" ? "Pilne" : priority === "high" ? "Wysokie" : priority === "low" ? "Niskie" : "Normalne";
 }
@@ -53,19 +71,27 @@ function localDateTime(value?: string | null) {
 }
 
 function DraggableTaskCard({ task, onOpen, onStatus }: { task: TaskBoardTask; onOpen: () => void; onStatus: (status: TaskBoardTask["status"]) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `task:${task.id}`, data: { taskId: task.id } });
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 20 } : undefined;
-  return <div ref={setNodeRef} style={style} onClick={onOpen} className={cn("salesly-task-card group cursor-pointer rounded-2xl border border-[#e3e9f0] bg-white p-4 shadow-[0_2px_10px_rgba(34,49,60,.025)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d6e1ec] hover:shadow-[0_10px_28px_rgba(34,49,60,.08)]", isDragging && "opacity-30")}>
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `task:${task.id}`, data: { taskId: task.id } });
+  return <div
+    ref={setNodeRef}
+    onClick={onOpen}
+    {...listeners}
+    {...attributes}
+    className={cn(
+      "salesly-task-card group cursor-grab touch-none select-none rounded-2xl border border-[#e3e9f0] bg-white p-4 shadow-[0_2px_10px_rgba(34,49,60,.025)] transition-[border-color,box-shadow,opacity,transform] duration-150 hover:-translate-y-0.5 hover:border-[#d6e1ec] hover:shadow-[0_10px_28px_rgba(34,49,60,.08)] active:cursor-grabbing",
+      isDragging && "opacity-25"
+    )}
+  >
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0 font-semibold leading-5 text-[#32414c]">{task.title}</div>
       <div className="flex shrink-0 items-center gap-1.5">
         <Badge variant={task.priority === "urgent" ? "red" : task.priority === "high" ? "amber" : task.priority === "low" ? "neutral" : "blue"}>{priorityLabel(task.priority)}</Badge>
-        <button type="button" aria-label="Przeciągnij zadanie" onClick={(event)=>event.stopPropagation()} {...listeners} {...attributes} className="flex h-7 w-7 cursor-grab items-center justify-center rounded-lg text-[#a0acb6] opacity-0 transition hover:bg-[#f1f5f8] hover:text-[#5e7180] active:cursor-grabbing group-hover:opacity-100 focus:opacity-100"><GripVertical size={15}/></button>
+        <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#9ba9b4] opacity-55 transition group-hover:bg-[#f1f5f8] group-hover:text-[#5e7180] group-hover:opacity-100"><GripVertical size={15}/></span>
       </div>
     </div>
     {task.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#768590]">{task.description}</p>}
     <div className="mt-3 space-y-1 text-xs text-[#84919c]"><div>{task.due_date ? `${formatDate(task.due_date)}${task.due_time ? ` · ${task.due_time.slice(0,5)}` : ""}` : "Bez terminu"}</div>{task.clients?.name && <div>{task.clients.name}</div>}<div>{task.profiles?.full_name || task.profiles?.email || "—"}</div></div>
-    <div className="mt-4 flex flex-wrap gap-1.5" onClick={(event)=>event.stopPropagation()}>
+    <div className="mt-4 flex flex-wrap gap-1.5" onPointerDown={(event)=>event.stopPropagation()} onClick={(event)=>event.stopPropagation()}>
       {task.status !== "in_progress" && task.status !== "done" && <Button variant="soft" size="sm" type="button" onClick={()=>onStatus("in_progress")}>W trakcie</Button>}
       {task.status !== "waiting" && task.status !== "done" && <Button variant="ghost" size="sm" type="button" onClick={()=>onStatus("waiting")}>Oczekuje</Button>}
       {task.status !== "done" && <Button size="sm" type="button" onClick={()=>onStatus("done")}><Check size={14}/> Gotowe</Button>}
@@ -91,6 +117,7 @@ export function TaskBoard({ initialTasks, profiles, clients }: { initialTasks: T
   const [tasks, setTasks] = useState(initialTasks);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeWidth, setActiveWidth] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 7 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }));
@@ -113,6 +140,7 @@ export function TaskBoard({ initialTasks, profiles, clients }: { initialTasks: T
 
   function onDragEnd(event: DragEndEvent) {
     setActiveId(null);
+    setActiveWidth(null);
     const taskId = String(event.active.id).replace("task:", "");
     const overId = event.over ? String(event.over.id) : "";
     if (!overId.startsWith("column:")) return;
@@ -153,11 +181,22 @@ export function TaskBoard({ initialTasks, profiles, clients }: { initialTasks: T
   }
 
   return <>
-    <DndContext sensors={sensors} onDragStart={(event)=>setActiveId(String(event.active.id).replace("task:",""))} onDragCancel={()=>setActiveId(null)} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerFirstCollision}
+      onDragStart={(event)=>{
+        setActiveId(String(event.active.id).replace("task:",""));
+        setActiveWidth(event.active.rect.current.initial?.width ?? null);
+      }}
+      onDragCancel={()=>{ setActiveId(null); setActiveWidth(null); }}
+      onDragEnd={onDragEnd}
+    >
       <div className="grid gap-5 xl:grid-cols-4">
         {columns.map(([status,label,Icon,tone])=><TaskColumn key={status} status={status} label={label} Icon={Icon} tone={tone} tasks={tasks.filter(task=>task.status===status)} onOpen={(task)=>setSelectedId(task.id)} onStatus={optimisticStatus}/>)}
       </div>
-      <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(.2,.8,.2,1)" }}>{active ? <div className="w-[290px] rotate-[1deg] rounded-2xl border border-[#cfdcf0] bg-white p-4 shadow-[0_18px_45px_rgba(28,44,60,.18)]"><div className="font-semibold text-[#32414c]">{active.title}</div><div className="mt-2 text-xs text-[#84919c]">Przenieś do innej kolumny</div></div> : null}</DragOverlay>
+      <DragOverlay adjustScale={false} dropAnimation={{ duration: 150, easing: "cubic-bezier(.2,.8,.2,1)" }}>
+        {active ? <div style={{ width: activeWidth ?? undefined }} className="rotate-[0.5deg] rounded-2xl border border-[#cfdcf0] bg-white p-4 shadow-[0_18px_45px_rgba(28,44,60,.18)]"><div className="font-semibold text-[#32414c]">{active.title}</div><div className="mt-2 text-xs text-[#84919c]">Upuść w wybranej kolumnie</div></div> : null}
+      </DragOverlay>
     </DndContext>
 
     <Modal open={Boolean(selected)} onClose={()=>setSelectedId(null)} title={selected?.title || "Zadanie"} eyebrow="Zadanie">
