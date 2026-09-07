@@ -43,9 +43,9 @@ export default async function DashboardPage() {
     <SectionHeader
       title="Dashboard"
       action={<>
-        <Link href="/tasks" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dfe6ee] bg-white px-4 text-sm font-semibold text-[#35444f] shadow-sm transition hover:bg-[#f8fafc]"><Plus size={16}/> Zadanie</Link>
-        <Link href="/calendar" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dce6ff] bg-[#eef3ff] px-4 text-sm font-semibold text-[#456edb] transition hover:bg-[#e5edff]"><Plus size={16}/> Wydarzenie</Link>
-        <Link href="/crm" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#4f78e7] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-[#426dde]"><Plus size={16}/> Klient</Link>
+        <Link href="/tasks" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dbe3ec] bg-white px-4 text-sm font-semibold text-[#35444f] shadow-sm transition hover:bg-[#f7f9fc]"><Plus size={16}/> Zadanie</Link>
+        <Link href="/calendar" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#d7e4ff] bg-[#edf3ff] px-4 text-sm font-semibold text-[#3e6fd4] transition hover:bg-[#e4edff]"><Plus size={16}/> Wydarzenie</Link>
+        <Link href="/crm" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#568deb] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-100 transition hover:bg-[#477ddd]"><Plus size={16}/> Klient</Link>
       </>}
     />
 
@@ -59,11 +59,11 @@ export default async function DashboardPage() {
     <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><CheckSquare2 size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Zadania na dziś</h2><div className="text-xs text-[#83909b]">{tasks.length} aktywnych</div></div></div>
-          <Link href="/tasks" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5e75a9] hover:text-[#456edb]">Wszystkie <ArrowRight size={15}/></Link>
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><CheckSquare2 size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Zadania na dziś</h2><div className="text-xs text-[#83909b]">{tasks.length} aktywnych</div></div></div>
+          <Link href="/tasks" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5f79ad] hover:text-[#3e6fd4]">Wszystkie <ArrowRight size={15}/></Link>
         </CardHeader>
         <CardContent className="space-y-2">
-          {tasks.map((task:any) => <Link href="/tasks" key={task.id} className="group flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f8fafc]">
+          {tasks.map((task:any) => <Link href="/tasks" key={task.id} className="group flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f0f3f6] text-[#61717e]"><Clock3 size={16}/></div>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[#34434e] group-hover:text-[#25343f]">{task.title}</div><div className="mt-0.5 text-xs text-[#84919c]">{task.due_time ? task.due_time.slice(0,5) : "bez godziny"}{task.clients?.name ? ` · ${task.clients.name}` : ""}</div></div>
             <Badge variant={task.priority === "urgent" ? "red" : task.priority === "high" ? "amber" : task.priority === "normal" ? "blue" : "neutral"}>{priorityLabel(task.priority)}</Badge>
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><CalendarClock size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Dzisiejsze spotkania</h2><div className="text-xs text-[#83909b]">spotkania z klientami</div></div></div>
-          <Link href="/calendar" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5e75a9] hover:text-[#456edb]">Kalendarz <ArrowRight size={15}/></Link>
+          <Link href="/calendar" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5f79ad] hover:text-[#3e6fd4]">Kalendarz <ArrowRight size={15}/></Link>
         </CardHeader>
         <CardContent className="space-y-2">
           {meetings.map((event:any) => <Link key={event.id} href="/calendar" className="flex items-center gap-3 rounded-xl border border-[#edf1f5] bg-[#fbfcfd] p-3 transition hover:border-[#dce3eb] hover:bg-white">
@@ -89,17 +89,17 @@ export default async function DashboardPage() {
 
     <div className="grid gap-5 xl:grid-cols-2">
       <Card>
-        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-amber-50 p-2 text-amber-600"><RefreshCcw size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Najbliższe odnowienia</h2><div className="text-xs text-[#83909b]">60 dni</div></div></div><Link href="/renewals" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5e75a9] hover:text-[#456edb]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
+        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-amber-50 p-2 text-amber-600"><RefreshCcw size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Najbliższe odnowienia</h2><div className="text-xs text-[#83909b]">60 dni</div></div></div><Link href="/renewals" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5f79ad] hover:text-[#3e6fd4]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
         <CardContent className="space-y-2">
-          {renewals.map((r:any) => <Link href={`/crm/${r.client_id}`} key={r.policy_id} className="flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f8fafc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{r.client_name}</div><div className="mt-0.5 text-xs text-[#84919c]">{r.product_name || r.category} · {formatDate(r.renewal_date)}</div></div><Badge variant={r.days_left <= 14 ? "red" : r.days_left <= 30 ? "amber" : "blue"}>{r.days_left} dni</Badge></Link>)}
+          {renewals.map((r:any) => <Link href={`/crm/${r.client_id}`} key={r.policy_id} className="flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{r.client_name}</div><div className="mt-0.5 text-xs text-[#84919c]">{r.product_name || r.category} · {formatDate(r.renewal_date)}</div></div><Badge variant={r.days_left <= 14 ? "red" : r.days_left <= 30 ? "amber" : "blue"}>{r.days_left} dni</Badge></Link>)}
           {!renewals.length && <EmptyState title="Brak odnowień" description="W ciągu 60 dni nie ma pozycji do obsługi."/>}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><CalendarDays size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Rocznice</h2><div className="text-xs text-[#83909b]">30 dni</div></div></div><Link href="/renewals" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5e75a9] hover:text-[#456edb]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
+        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><CalendarDays size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Rocznice</h2><div className="text-xs text-[#83909b]">30 dni</div></div></div><Link href="/renewals" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5f79ad] hover:text-[#3e6fd4]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
         <CardContent className="space-y-2">
-          {anniversaries.map((r:any) => <Link href={`/crm/${r.client_id}`} key={r.policy_id} className="flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f8fafc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{r.client_name}</div><div className="mt-0.5 text-xs text-[#84919c]">{r.product_name || r.category} · {formatDate(r.anniversary_date)}</div></div><Badge variant={r.days_left <= 7 ? "amber" : "blue"}>{r.days_left} dni</Badge></Link>)}
+          {anniversaries.map((r:any) => <Link href={`/crm/${r.client_id}`} key={r.policy_id} className="flex items-center justify-between gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{r.client_name}</div><div className="mt-0.5 text-xs text-[#84919c]">{r.product_name || r.category} · {formatDate(r.anniversary_date)}</div></div><Badge variant={r.days_left <= 7 ? "amber" : "blue"}>{r.days_left} dni</Badge></Link>)}
           {!anniversaries.length && <EmptyState title="Brak rocznic" description="W ciągu 30 dni nie ma rocznic polis."/>}
         </CardContent>
       </Card>
@@ -109,13 +109,13 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-[#f0f3f6] p-2 text-[#657580]"><Users size={18}/></div><h2 className="font-bold text-[#2a3944]">Ostatnia aktywność klientów</h2></div></CardHeader>
         <CardContent className="space-y-1">
-          {activities.map((a:any) => <Link key={a.id} href={a.clients?.id ? `/crm/${a.clients.id}` : "/crm"} className="flex items-center justify-between gap-4 rounded-xl px-2 py-2.5 transition hover:bg-[#f8fafc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{a.title}</div><div className="mt-0.5 truncate text-xs text-[#84919c]">{a.clients?.name || "CRM"}</div></div><div className="shrink-0 text-xs text-[#9aa5ae]">{formatDateTime(a.occurred_at)}</div></Link>)}
+          {activities.map((a:any) => <Link key={a.id} href={a.clients?.id ? `/crm/${a.clients.id}` : "/crm"} className="flex items-center justify-between gap-4 rounded-xl px-2 py-2.5 transition hover:bg-[#f7f9fc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{a.title}</div><div className="mt-0.5 truncate text-xs text-[#84919c]">{a.clients?.name || "CRM"}</div></div><div className="shrink-0 text-xs text-[#9aa5ae]">{formatDateTime(a.occurred_at)}</div></Link>)}
           {!activities.length && <EmptyState title="Brak aktywności" description="Historia klientów pojawi się tutaj po pierwszych wpisach."/>}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><Bell size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Powiadomienia</h2><div className="text-xs text-[#83909b]">nieprzeczytane</div></div></div><Link href="/notifications" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5e75a9] hover:text-[#456edb]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
+        <CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><Bell size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Powiadomienia</h2><div className="text-xs text-[#83909b]">nieprzeczytane</div></div></div><Link href="/notifications" className="inline-flex items-center gap-1 text-sm font-semibold text-[#5f79ad] hover:text-[#3e6fd4]">Wszystkie <ArrowRight size={15}/></Link></CardHeader>
         <CardContent className="space-y-2">
           {notifications.map((n:any) => <Link key={n.id} href={n.href || "/notifications"} className="block rounded-xl border border-[#e7ecf2] bg-[#fbfcfe] p-3 transition hover:border-[#dce3eb] hover:bg-white"><div className="text-sm font-semibold text-[#34434e]">{n.title}</div>{n.body && <div className="mt-1 line-clamp-1 text-xs text-[#84919c]">{n.body}</div>}</Link>)}
           {!notifications.length && <EmptyState title="Wszystko przeczytane" description="Nie masz nowych powiadomień."/>}

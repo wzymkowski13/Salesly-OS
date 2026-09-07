@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7fb;
-  --foreground: #1f2d38;
+  --background: #f5f7fb;
+  --foreground: #202a33;
   --card: #ffffff;
-  --card-foreground: #1f2d38;
-  --muted: #6f7d89;
-  --border: #e3e9f0;
-  --brand: #4f78e7;
-  --brand-strong: #3d67dc;
-  --brand-soft: #eef3ff;
-  --navy: #23313c;
-  --navy-soft: #2e3e4b;
+  --card-foreground: #202a33;
+  --muted: #6e7d89;
+  --border: #dfe6ee;
+  --brand: #568deb;
+  --brand-strong: #477ddd;
+  --brand-soft: #edf3ff;
+  --brand-soft-strong: #e4edff;
+  --graphite: #202a33;
+  --sidebar: #f7f9fc;
+  --sidebar-strong: #eef3f8;
+  --sidebar-border: #dfe6ee;
 }
 
 * { box-sizing: border-box; }
@@ -27,11 +30,11 @@ body {
 }
 button, input, textarea, select { font: inherit; }
 a { color: inherit; text-decoration: none; }
-::selection { background: #dbe6ff; color: #24313c; }
+::selection { background: #dce8ff; color: #202a33; }
 summary::-webkit-details-marker { display: none; }
 summary { list-style: none; }
 
-.salesly-scrollbar { scrollbar-width: thin; scrollbar-color: #c8d2df transparent; }
+.salesly-scrollbar { scrollbar-width: thin; scrollbar-color: #cbd5df transparent; }
 .salesly-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-.salesly-scrollbar::-webkit-scrollbar-thumb { background: #c8d2df; border-radius: 999px; }
+.salesly-scrollbar::-webkit-scrollbar-thumb { background: #cbd5df; border-radius: 999px; }
 .salesly-scrollbar::-webkit-scrollbar-track { background: transparent; }

@@ -8,7 +8,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const supabase = await createClient();
   const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("read_at", null);
-  return <div className="flex min-h-screen bg-[#f4f7fb]">
+
+  return <div className="flex min-h-screen bg-[#f5f7fb]">
     <Sidebar />
     <div className="min-w-0 flex-1">
       <Topbar email={user.email || ""} unread={count || 0}/>
