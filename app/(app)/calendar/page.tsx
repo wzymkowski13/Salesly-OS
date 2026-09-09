@@ -83,7 +83,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const title = view === "month" ? format(focus,"LLLL yyyy",{locale:pl}) : view === "week" ? `${format(from,"d MMM",{locale:pl})} – ${format(to,"d MMM yyyy",{locale:pl})}` : format(focus,"EEEE, d MMMM yyyy",{locale:pl});
   const focusDate = format(focus,"yyyy-MM-dd");
 
-  const addEventForm = <form action={createEvent} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+  const addEventForm = <form action={createEvent} data-salesly-create="event" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł</label><Input name="title" required placeholder="Np. spotkanie z ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required defaultValue={focusDate}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label><Select name="event_type"><option value="meeting">Spotkanie</option><option value="call">Telefon</option><option value="follow_up">Follow-up</option><option value="private">Prywatne</option><option value="other">Inne</option></Select></div>

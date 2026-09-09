@@ -20,7 +20,7 @@ export default async function TasksPage() {
     supabase.from("clients").select("id,name").is("archived_at", null).order("name").limit(500),
   ]);
 
-  const newTaskForm = <form action={createTask} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+  const newTaskForm = <form action={createTask} data-salesly-create="task" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa</label><Input name="title" required placeholder="Np. oddzwonić do ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Termin</label><Input name="due_date" type="date"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Godzina</label><TimePicker name="due_time" optional/></div>
