@@ -67,49 +67,45 @@ export function TimePicker({
   return <div className={cn("space-y-2", className)}>
     {name && <input type="hidden" name={name} value={value} required={required}/>} 
 
-    <div className="flex items-center gap-2">
-      <div className="grid h-10 min-w-0 flex-1 grid-cols-[28px_minmax(58px,1fr)_10px_minmax(58px,1fr)] items-center rounded-xl border border-[#dfe6ee] bg-white px-2 shadow-[0_1px_2px_rgba(31,48,65,.025)] transition focus-within:border-[#7f9bed] focus-within:ring-4 focus-within:ring-[#4f78e7]/10">
-        <Clock3 size={15} className="text-[#83929d]"/>
+    <div className="flex h-10 w-full items-center rounded-xl border border-[#dfe6ee] bg-white px-2.5 shadow-[0_1px_2px_rgba(31,48,65,.025)] transition focus-within:border-[#7f9bed] focus-within:ring-4 focus-within:ring-[#4f78e7]/10">
+      <Clock3 size={15} className="mr-2 shrink-0 text-[#83929d]"/>
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
         <select
           aria-label="Godzina"
           value={hour}
           onChange={event => setHour(event.target.value)}
-          className="h-9 min-w-0 appearance-none bg-transparent px-1 text-center text-sm font-bold tabular-nums text-[#2d3c47] outline-none"
+          className="h-8 w-[46px] appearance-none bg-transparent text-center text-sm font-bold tabular-nums text-[#2d3c47] outline-none"
         >
           {hours.map(item => <option key={item} value={item}>{item}</option>)}
         </select>
-        <span className="text-center font-bold text-[#7c8b96]">:</span>
+        <span className="font-bold text-[#7c8b96]">:</span>
         <select
           aria-label="Minuty"
           value={minute}
           onChange={event => setMinute(event.target.value)}
-          className="h-9 min-w-0 appearance-none bg-transparent px-1 text-center text-sm font-bold tabular-nums text-[#2d3c47] outline-none"
+          className="h-8 w-[46px] appearance-none bg-transparent text-center text-sm font-bold tabular-nums text-[#2d3c47] outline-none"
         >
           {minutes.map(item => <option key={item} value={item}>{item}</option>)}
         </select>
       </div>
-
       {optional && <button
         type="button"
         aria-label="Usuń godzinę"
         onClick={() => setEnabled(false)}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#dfe6ee] bg-white text-[#7c8b96] transition hover:border-[#d2dce6] hover:bg-[#f6f8fa] hover:text-[#445560] active:scale-95"
-      ><X size={15}/></button>}
+        className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#8a98a3] transition hover:bg-[#f1f4f7] hover:text-[#445560] active:scale-95"
+      ><X size={14}/></button>}
     </div>
 
-    <div className="flex items-center justify-between gap-3">
-      <div className="text-[11px] font-semibold text-[#8997a2]">Wybrano <span className="font-bold tabular-nums text-[#4b5d69]">{value}</span></div>
-      <div className="flex gap-1">
-        {["00","15","30","45"].map(item => <button
-          key={item}
-          type="button"
-          onClick={() => setMinute(item)}
-          className={cn(
-            "rounded-lg px-2 py-1 text-[10px] font-bold transition active:scale-95",
-            minute === item ? "bg-[#e9f1ff] text-[#3f6fd0]" : "bg-[#f3f6f8] text-[#7a8994] hover:bg-[#edf1f5]"
-          )}
-        >:{item}</button>)}
-      </div>
+    <div className="grid grid-cols-4 gap-1.5">
+      {["00","15","30","45"].map(item => <button
+        key={item}
+        type="button"
+        onClick={() => setMinute(item)}
+        className={cn(
+          "h-8 min-w-0 rounded-lg text-[11px] font-bold tabular-nums transition active:scale-95",
+          minute === item ? "bg-[#e9f1ff] text-[#3f6fd0] ring-1 ring-[#d6e3ff]" : "bg-[#f3f6f8] text-[#7a8994] hover:bg-[#edf1f5]"
+        )}
+      >:{item}</button>)}
     </div>
   </div>;
 }
