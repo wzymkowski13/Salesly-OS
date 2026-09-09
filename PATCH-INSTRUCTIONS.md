@@ -1,63 +1,79 @@
-# Salesly OS v0.3.2 — interaction polish
+# Salesly OS v0.3.3 - interaction fixes
 
-Patch przygotowany na bazie aktualnego `main` repozytorium `wzymkowski13/Salesly-OS` (v0.3.1).
+Patch jest przygotowany pod aktualny `main` repozytorium Salesly-OS.
 
 ## Co poprawia
 
-### Drag & drop
-- overlay jest renderowany bezpośrednio do `document.body`, więc nie dziedziczy przesunięć/layoutu panelu,
-- zachowywane są rzeczywiste wymiary przeciąganego kafelka,
-- poprawka dotyczy kalendarza i tablicy zadań,
-- punkt złapania kafelka pozostaje przy kursorze zamiast wizualnego „odjeżdżania”.
+1. Drag & drop
+   - DragOverlay jest renderowany przez portal do `document.body`, poza layoutem aplikacji.
+   - usunięte zostały transformacje hover z elementów przeciąganych,
+   - animacja kart nie zostawia po sobie `transform`, który potrafił rozjeżdżać współrzędne DnD.
 
-### Dodawanie zadań i wydarzeń
-- okno dodawania jest teraz kontrolowanym, animowanym popoverem zamiast natywnego `<details>`,
-- po zatwierdzeniu formularz zamyka się od razu z krótkim fade/scale,
-- zadanie/wydarzenie pojawia się optymistycznie od razu w aktualnym widoku,
-- po odpowiedzi Supabase stan synchronizuje się ze świeżymi danymi z serwera,
-- nie trzeba odświeżać strony.
+2. Dodawanie zadań i wydarzeń
+   - formularz zamyka się płynnie natychmiast po submit,
+   - zadanie/wydarzenie pojawia się optymistycznie od razu,
+   - po odpowiedzi Server Action dane synchronizują się ze świeżymi propsami bez F5.
 
-### Godzina
-- przebudowany picker godziny,
-- wybrana wartość jest zawsze jawnie widoczna (`Wybrano 09:00`),
-- osobne, czytelne pola godziny i minut,
-- szybkie minuty `:00 / :15 / :30 / :45`,
-- przy polu opcjonalnym zamiast wyszarzonego pickera jest `Dodaj godzinę`.
+3. Godzina zadania
+   - po włączeniu godziny picker pokazuje wybraną wartość,
+   - wartość `due_time` jest dodawana do optymistycznego kafelka, więc po utworzeniu od razu widać np. `16:15`.
 
-## Pliki w patchu
+4. Usuwanie
+   - zadanie można usunąć z modala edycji,
+   - wydarzenie można usunąć z modala kalendarza,
+   - zadanie otwarte z kalendarza można usunąć również z kalendarza,
+   - przed kasowaniem jest potwierdzenie.
 
-- `components/form-disclosure.tsx`
-- `components/ui/time-picker.tsx`
-- `components/task-board.tsx`
-- `components/calendar-workspace.tsx`
+## Pliki do podmiany
+
+Skopiuj zawartość ZIP-a do katalogu głównego projektu, zachowując strukturę folderów.
+
+Podmieniane pliki:
+
+- `app/globals.css`
 - `app/(app)/tasks/page.tsx`
 - `app/(app)/calendar/page.tsx`
+- `components/form-disclosure.tsx`
+- `components/task-board.tsx`
+- `components/calendar-workspace.tsx`
+- `components/ui/time-picker.tsx`
+- `lib/actions/tasks.ts`
+- `lib/actions/events.ts`
 
-Nie ma zmian w Supabase ani migracji SQL.
+Nie ruszaj `.env.local` ani Supabase. Nie ma migracji SQL.
 
-## Wdrożenie
-
-1. Zrób commit/backup aktualnej wersji.
-2. Rozpakuj ZIP.
-3. Skopiuj katalogi `components` i `app` z patcha do katalogu projektu, zgadzając się na nadpisanie tych 6 plików.
-4. Lokalnie:
+## Test lokalny
 
 ```bash
 npm run dev
 ```
 
-5. Sprawdź:
-   - drag & drop zadania między statusami,
-   - drag & drop wydarzenia między dniami,
-   - dodanie zadania z godziną,
-   - dodanie zadania bez godziny,
-   - dodanie wydarzenia.
-6. Jeśli jest OK:
+Sprawdź po kolei:
+
+1. Dodaj zadanie z datą i godziną - panel ma zniknąć od razu, a kafelek ma pojawić się bez F5 i pokazać godzinę.
+2. Dodaj wydarzenie - analogicznie ma wejść od razu do kalendarza.
+3. Przeciągnij zadanie między kolumnami.
+4. Przeciągnij wydarzenie na inny dzień w kalendarzu.
+5. Otwórz zadanie i kliknij `Usuń`.
+6. Otwórz wydarzenie i kliknij `Usuń`.
+
+## Deploy
+
+Przed commitem warto sprawdzić, czy Git faktycznie widzi patch:
+
+```bash
+git status
+git diff --stat
+```
+
+Powinno być zmienionych 9 plików z listy wyżej.
+
+Następnie:
 
 ```bash
 git add .
-git commit -m "Fix drag drop and quick create interactions"
+git commit -m "Fix task and calendar interactions"
 git push
 ```
 
-Vercel zrobi redeploy automatycznie.
+Vercel powinien automatycznie zrobić nowy deployment.

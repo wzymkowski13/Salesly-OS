@@ -53,3 +53,11 @@ export async function rescheduleEvent(eventId: string, date: string, startTime: 
   if (error) throw new Error(error.message);
   revalidateEventViews();
 }
+
+export async function deleteEvent(eventId: string) {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) throw new Error(error.message);
+  revalidateEventViews();
+}

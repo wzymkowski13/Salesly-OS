@@ -17,8 +17,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Check, Clock3, GripVertical, PauseCircle, PlayCircle } from "lucide-react";
-import { setTaskStatus, updateTask } from "@/lib/actions/tasks";
+import { Check, Clock3, GripVertical, PauseCircle, PlayCircle, Trash2 } from "lucide-react";
+import { deleteTask, setTaskStatus, updateTask } from "@/lib/actions/tasks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -121,7 +121,7 @@ function DraggableTaskCard({ task, onOpen, onStatus }: { task: TaskBoardTask; on
     {...listeners}
     {...attributes}
     className={cn(
-      "salesly-task-card group cursor-grab touch-none select-none rounded-2xl border border-[#e3e9f0] bg-white p-4 shadow-[0_2px_10px_rgba(34,49,60,.025)] transition-[border-color,box-shadow,opacity,transform] duration-150 hover:-translate-y-0.5 hover:border-[#d6e1ec] hover:shadow-[0_10px_28px_rgba(34,49,60,.08)] active:cursor-grabbing",
+      "salesly-task-card group cursor-grab touch-none select-none rounded-2xl border border-[#e3e9f0] bg-white p-4 shadow-[0_2px_10px_rgba(34,49,60,.025)] transition-[border-color,box-shadow,opacity] duration-150 hover:border-[#d6e1ec] hover:shadow-[0_10px_28px_rgba(34,49,60,.08)] active:cursor-grabbing",
       isDragging && "opacity-20"
     )}
   >
@@ -257,6 +257,23 @@ export function TaskBoard({ initialTasks, profiles, clients }: { initialTasks: T
     });
   }
 
+
+  function removeTask(task: TaskBoardTask) {
+    if (!window.confirm(`Usunąć zadanie „${task.title}”?`)) return;
+    const previous = tasks;
+    setTasks(current => current.filter(item => item.id !== task.id));
+    setSelectedId(null);
+    startTransition(async () => {
+      try {
+        await deleteTask(task.id);
+        router.refresh();
+      } catch {
+        setTasks(previous);
+        window.alert("Nie udało się usunąć zadania.");
+      }
+    });
+  }
+
   const overlay = typeof document !== "undefined" ? createPortal(
     <DragOverlay
       adjustScale={false}
@@ -311,7 +328,10 @@ export function TaskBoard({ initialTasks, profiles, clients }: { initialTasks: T
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id" defaultValue={selected.client_id || ""}><option value="">— bez klienta —</option>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</Select></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przypomnienie</label><DateTimePicker name="reminder_at" defaultValue={localDateTime(selected.reminder_at)}/></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Opis</label><Textarea name="description" rows={5} defaultValue={selected.description || ""}/></div>
-        <div className="md:col-span-2 flex justify-end gap-2 border-t border-[#edf1f5] pt-4"><Button type="button" variant="secondary" onClick={() => setSelectedId(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        <div className="md:col-span-2 flex items-center justify-between gap-3 border-t border-[#edf1f5] pt-4">
+          <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => removeTask(selected)}><Trash2 size={15}/> Usuń</Button>
+          <div className="flex gap-2"><Button type="button" variant="secondary" onClick={() => setSelectedId(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        </div>
       </form>}
     </Modal>
   </>;

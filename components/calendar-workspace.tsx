@@ -19,9 +19,9 @@ import {
 } from "@dnd-kit/core";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
-import { GripVertical } from "lucide-react";
-import { rescheduleEvent, updateEvent } from "@/lib/actions/events";
-import { rescheduleTask, updateTask } from "@/lib/actions/tasks";
+import { GripVertical, Trash2 } from "lucide-react";
+import { deleteEvent, rescheduleEvent, updateEvent } from "@/lib/actions/events";
+import { deleteTask, rescheduleTask, updateTask } from "@/lib/actions/tasks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,7 +116,7 @@ function DraggableCalendarItem({ item, compact = false, onOpen }: { item: Calend
     {...listeners}
     {...attributes}
     className={cn(
-      "group relative w-full cursor-grab touch-none select-none border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-[filter,box-shadow,opacity,transform] duration-150 hover:-translate-y-px hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing",
+      "group relative w-full cursor-grab touch-none select-none border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-[filter,box-shadow,opacity] duration-150 hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing",
       compact ? "truncate rounded-lg px-2 py-1.5 text-[11px] font-semibold" : "rounded-xl p-3",
       itemStyle(item),
       isDragging && "opacity-20"
@@ -278,6 +278,26 @@ export function CalendarWorkspace({
     });
   }
 
+
+  function removeSelected() {
+    if (!selected) return;
+    const label = selected.kind === "task" ? "zadanie" : "wydarzenie";
+    if (!window.confirm(`Usunąć ${label} „${selected.title}”?`)) return;
+    const previous = items;
+    setItems(current => current.filter(item => !(item.kind === selected.kind && item.id === selected.id)));
+    setSelectedKey(null);
+    startTransition(async () => {
+      try {
+        if (selected.kind === "task") await deleteTask(selected.id);
+        else await deleteEvent(selected.id);
+        router.refresh();
+      } catch {
+        setItems(previous);
+        window.alert(`Nie udało się usunąć ${label}.`);
+      }
+    });
+  }
+
   const focus = parseISO(focusDate);
   const compactOverlay = view === "month";
 
@@ -369,7 +389,10 @@ export function CalendarWorkspace({
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><TimePicker name="end_time" defaultValue={selected.end_time} optional/></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id" defaultValue={selected.client_id || ""}><option value="">— bez klienta —</option>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</Select></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Opis</label><Textarea name="description" rows={5} defaultValue={selected.description || ""}/></div>
-        <div className="md:col-span-2 flex justify-end gap-2 border-t border-[#edf1f5] pt-4"><Button type="button" variant="secondary" onClick={() => setSelectedKey(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        <div className="md:col-span-2 flex items-center justify-between gap-3 border-t border-[#edf1f5] pt-4">
+          <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={removeSelected}><Trash2 size={15}/> Usuń</Button>
+          <div className="flex gap-2"><Button type="button" variant="secondary" onClick={() => setSelectedKey(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        </div>
       </form>}
 
       {selected?.kind === "task" && <form key={`task-${selected.id}`} onSubmit={event => { event.preventDefault(); saveSelected(new FormData(event.currentTarget)); }} className="grid gap-4 md:grid-cols-2">
@@ -382,7 +405,10 @@ export function CalendarWorkspace({
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id" defaultValue={selected.client_id || ""}><option value="">— bez klienta —</option>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</Select></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przypomnienie</label><DateTimePicker name="reminder_at" defaultValue={localDateTime(selected.reminder_at)}/></div>
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Opis</label><Textarea name="description" rows={5} defaultValue={selected.description || ""}/></div>
-        <div className="md:col-span-2 flex justify-end gap-2 border-t border-[#edf1f5] pt-4"><Button type="button" variant="secondary" onClick={() => setSelectedKey(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        <div className="md:col-span-2 flex items-center justify-between gap-3 border-t border-[#edf1f5] pt-4">
+          <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={removeSelected}><Trash2 size={15}/> Usuń</Button>
+          <div className="flex gap-2"><Button type="button" variant="secondary" onClick={() => setSelectedKey(null)}>Anuluj</Button><Button type="submit">Zapisz zmiany</Button></div>
+        </div>
       </form>}
     </Modal>
   </>;

@@ -71,3 +71,11 @@ export async function rescheduleTask(taskId: string, dueDate: string) {
   if (error) throw new Error(error.message);
   revalidateTaskViews();
 }
+
+export async function deleteTask(taskId: string) {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  if (error) throw new Error(error.message);
+  revalidateTaskViews();
+}
