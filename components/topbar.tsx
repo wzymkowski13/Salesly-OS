@@ -9,8 +9,7 @@ export function Topbar({ email, unread }: { email: string; unread: number }) {
   return <header className="sticky top-0 z-40 flex h-[74px] items-center justify-between border-b border-[#e3e9f0] bg-white/92 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
     <div className="flex min-w-0 items-center gap-3">
       <div className="flex items-center gap-2 lg:hidden">
-        <img src="/salesly-logo.png" alt="Salesly" className="h-8 w-auto"/>
-        <span className="rounded-md border border-[#d8e4fb] bg-[#edf3ff] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#477ddd]">OS</span>
+        <img src="/salesly-logo.png" alt="Salesly OS" className="h-8 w-auto max-w-[150px] object-contain"/>
       </div>
       <Link href="/crm" className="hidden h-10 min-w-[230px] items-center gap-2 rounded-xl border border-[#dfe6ee] bg-[#f8fafc] px-3 text-sm text-[#81909b] transition hover:border-[#ced9e4] hover:bg-white hover:text-[#5f7180] sm:flex">
         <Search size={16}/>

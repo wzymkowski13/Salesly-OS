@@ -20,9 +20,8 @@ export function Sidebar() {
 
   return <aside className="hidden w-[236px] shrink-0 border-r border-[#dfe6ee] bg-[#f7f9fc] lg:flex lg:flex-col">
     <div className="flex h-[74px] items-center border-b border-[#e5ebf1] px-5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <img src="/salesly-logo.png" alt="Salesly" className="h-[31px] w-auto max-w-[126px] object-contain" />
-        <span className="rounded-md border border-[#d8e4fb] bg-[#edf3ff] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.17em] text-[#477ddd]">OS</span>
+      <div className="flex min-w-0 items-center">
+        <img src="/salesly-logo.png" alt="Salesly OS" className="h-[32px] w-auto max-w-[170px] object-contain" />
       </div>
     </div>
 

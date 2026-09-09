@@ -1,33 +1,32 @@
-# Salesly OS - poprawka formularza zadania / picker godziny
+# Salesly OS – logo update
 
-Patch obejmuje tylko 2 pliki:
+Ten patch podmienia domyślne logo aplikacji na nowe `Salesly OS` oraz usuwa zdublowane oznaczenie `OS` obok logotypu w sidebarze, topbarze mobilnym i na ekranie logowania.
 
-- `components/ui/time-picker.tsx`
-- `app/(app)/tasks/page.tsx`
+## Co zawiera
+- `public/salesly-logo.png` – nowy logotyp Salesly OS z przezroczystym tłem
+- `components/sidebar.tsx`
+- `components/topbar.tsx`
+- `app/(auth)/login/page.tsx`
 
-## Co zmienia
+## Dlaczego w załączonym JPG było czarne tło?
+Bo **JPG/JPEG nie obsługuje przezroczystości**. Tło zostało więc spłaszczone do czerni. W tym patchu logotyp został zapisany jako **PNG z przezroczystością**, więc na jasnym UI będzie wyglądał poprawnie.
 
-- formularz dodawania zadania przechodzi z 4 do 3 kolumn na dużym ekranie,
-- picker godziny ma więcej miejsca i nie wypycha elementów poza panel,
-- usunięty został redundantny wiersz `Wybrano 17:00`,
-- szybkie minuty `:00 / :15 / :30 / :45` mieszczą się zawsze w szerokości pola,
-- przycisk usunięcia godziny jest wewnątrz pola zamiast jako osobny duży kafelek,
-- sekcja przypomnienia dostaje 2 kolumny szerokości na desktopie.
-
-## Wdrożenie
-
-Skopiuj zawartość paczki nad aktualny projekt, zachowując `.env.local` i `.git`.
-
-Potem:
+## Jak wdrożyć
+1. Zrób backup obecnego projektu.
+2. Rozpakuj paczkę nad aktualny projekt.
+3. Zachowaj `.git` i `.env.local`.
+4. Uruchom lokalnie:
 
 ```bash
 npm run dev
 ```
 
-Jeśli wygląda dobrze:
+5. Jeśli wygląda dobrze:
 
 ```bash
 git add .
-git commit -m "Polish task time picker layout"
+git commit -m "Update default Salesly OS logo"
 git push
 ```
+
+Vercel zrobi redeploy automatycznie.
