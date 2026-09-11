@@ -59,6 +59,7 @@ export function LeadFactoryWorkspace() {
   const [target, setTarget] = useState(200);
   const [mode, setMode] = useState<"fast" | "deep">("fast");
   const [includePublic, setIncludePublic] = useState(false);
+  const [resetSources, setResetSources] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [currentRun, setCurrentRun] = useState<Run | null>(null);
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([]);
@@ -69,9 +70,10 @@ export function LeadFactoryWorkspace() {
   const region = source === "companies" ? "Śląskie" : "Częstochowa + okolice";
   const validTarget = Number.isInteger(target) && target >= 1 && target <= 500;
   const summary = useMemo(() => {
-    if (source === "jdg") return `${target} rekordów · ${region} · CEIDG · Fast`;
-    return `${target} firm · ${region} · ${mode === "fast" ? "Fast" : "Deep"} · oświata/urzędy ${includePublic ? "ON" : "OFF"}`;
-  }, [source, target, mode, includePublic, region]);
+    const sourcePosition = resetSources ? "start od pierwszego źródła" : "kontynuacja od zapisanego kursora";
+    if (source === "jdg") return `${target} rekordów · ${region} · CEIDG · Fast · ${sourcePosition}`;
+    return `${target} firm · ${region} · ${mode === "fast" ? "Fast" : "Deep"} · oświata/urzędy ${includePublic ? "ON" : "OFF"} · ${sourcePosition}`;
+  }, [source, target, mode, includePublic, resetSources, region]);
 
   async function loadRuns() {
     try {
@@ -129,7 +131,7 @@ export function LeadFactoryWorkspace() {
       const response = await fetch("/api/lead-factory/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source, target, mode, includePublic }),
+        body: JSON.stringify({ source, target, mode, includePublic, resetSources }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Nie udało się uruchomić kampanii.");
@@ -199,13 +201,14 @@ export function LeadFactoryWorkspace() {
             {source === "jdg" && <div className="mt-1.5 text-xs text-[#8a98a4]">JDG w obecnym pipeline obsługuje tylko collect/Fast.</div>}
           </div>
 
-          {source === "companies" && <div className="space-y-2">
-            <Toggle checked={includePublic} onChange={setIncludePublic} label="Oświata i urzędy" description="Po włączeniu 20% partii jest celowane w JST/RSPO; przy niedoborze segment może uzupełnić brak." />
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+          <div className="space-y-2">
+            {source === "companies" && <Toggle checked={includePublic} onChange={setIncludePublic} label="Oświata i urzędy" description="Po włączeniu 20% partii jest celowane w JST/RSPO; przy niedoborze segment może uzupełnić brak." />}
+            <Toggle checked={resetSources} onChange={setResetSources} label="Reset źródeł od początku" description="Domyślnie OFF: kontynuuj od ostatniego zapisanego kursora. ON: zacznij skan źródeł od pierwszej strony, zachowując historię i deduplikację." />
+            {source === "companies" && <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
               <ShieldCheck size={18} className="shrink-0 text-emerald-600"/>
               <div><div className="text-sm font-semibold text-[#34434e]">Spółdzielnie: zawsze wykluczone</div><div className="mt-0.5 text-xs text-[#74838f]">To twardy prefiltr w PF, nie opcja frontendu.</div></div>
-            </div>
-          </div>}
+            </div>}
+          </div>
 
           <div className="rounded-xl border border-[#e4eaf1] bg-[#f8fafc] px-4 py-3">
             <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#8a98a4]">Podsumowanie</div>
