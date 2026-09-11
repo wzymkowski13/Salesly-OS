@@ -1,20 +1,21 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Database, Factory, Play, UserRound } from "lucide-react";
+import { ArrowRight, Building2, Database, Factory, UserRound } from "lucide-react";
 import { SectionHeader } from "@/components/section-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { LeadFactoryWorkspace } from "@/components/lead-factory-workspace";
 
 const modules = [
   {
     title: "Firmy 10+",
     description: "Kampanie pozyskiwania firm, historia runów i paczki do dzwonienia.",
     icon: Building2,
-    status: "Do integracji",
+    status: "UI gotowe",
   },
   {
     title: "JDG",
     description: "Pozyskiwanie przedsiębiorców i obsługa kampanii CEIDG.",
     icon: UserRound,
-    status: "Do integracji",
+    status: "UI gotowe",
   },
   {
     title: "Baza leadów",
@@ -28,12 +29,14 @@ export default function LeadFactoryPage() {
   return <div className="space-y-7">
     <SectionHeader title="Lead Factory" />
 
+    <LeadFactoryWorkspace />
+
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><Factory size={18}/></div>
           <div>
-            <h2 className="font-bold text-[#2a3944]">Centrum pozyskiwania leadów</h2>
+            <h2 className="font-bold text-[#2a3944]">Moduły Lead Factory</h2>
             <div className="text-xs text-[#83909b]">Warstwa sterująca scraperami i przepływem danych</div>
           </div>
         </div>
@@ -55,7 +58,7 @@ export default function LeadFactoryPage() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><Play size={18}/></div>
+          <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><Factory size={18}/></div>
           <div>
             <h2 className="font-bold text-[#2a3944]">Docelowy przepływ</h2>
             <div className="text-xs text-[#83909b]">bez przenoszenia logiki scraperów do Salesly OS</div>
