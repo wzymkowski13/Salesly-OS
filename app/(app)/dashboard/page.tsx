@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { todayInWarsaw, warsawDayRange } from "@/lib/date";
 import { SectionHeader } from "@/components/section-header";
 import { StatCard } from "@/components/stat-card";
+import { EcosystemOverview } from "@/components/ecosystem-overview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -55,6 +56,8 @@ export default async function DashboardPage() {
       <StatCard label="Odnowienia" value={renewals.length} hint="w ciągu 60 dni" icon={RefreshCcw} tone="amber"/>
       <StatCard label="Aktywni klienci" value={clientsRes.count || 0} hint={`${anniversaries.length} rocznic do 30 dni`} icon={Users} tone="slate"/>
     </div>
+
+    <EcosystemOverview />
 
     <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
       <Card>
