@@ -50,12 +50,14 @@ export function buildDispatchInputs({
   target,
   mode,
   includePublic,
+  resetSources,
   requestId,
 }: {
   source: LeadFactorySource;
   target: number;
   mode: LeadFactoryMode;
   includePublic: boolean;
+  resetSources: boolean;
   requestId: string;
 }) {
   if (!Number.isInteger(target) || target < 1 || target > 500) {
@@ -68,12 +70,12 @@ export function buildDispatchInputs({
   return {
     campaign_profile: source === "companies" ? "10plus" : "jdg",
     operation: mode === "deep" ? "deepen" : "collect",
-    // UI steruje wielkością tej partii. Łączny limit kampanii zostawiamy wysoko,
-    // aby kolejne uruchomienia nie stawały się no-op po przekroczeniu 100/200/500.
+    // Tymczasowa zgodność z obecnym PF. Docelowo campaign_target zniknie,
+    // a kolejne partie będą ograniczane wyłącznie batch_targetem i stanem źródeł.
     campaign_target: "5000",
     batch_target: String(target),
     new_campaign: false,
-    reset_sources: false,
+    reset_sources: resetSources,
     include_public: source === "companies" && includePublic,
     public_share: "20",
     request_id: requestId,
