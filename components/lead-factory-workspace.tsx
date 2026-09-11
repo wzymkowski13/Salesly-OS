@@ -5,20 +5,16 @@ import {
   AlertCircle,
   Building2,
   CheckCircle2,
-  ChevronDown,
   Clock3,
   Database,
   Download,
   ExternalLink,
   Loader2,
   Play,
-  School,
   Settings2,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-
-const targetOptions = [100, 200, 300, 500];
 
 type Artifact = { id: number; name: string; expired: boolean; size_in_bytes: number };
 type Run = {
@@ -71,6 +67,7 @@ export function LeadFactoryWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const region = source === "companies" ? "Śląskie" : "Częstochowa + okolice";
+  const validTarget = Number.isInteger(target) && target >= 1 && target <= 500;
   const summary = useMemo(() => {
     if (source === "jdg") return `${target} rekordów · ${region} · CEIDG · Fast`;
     return `${target} firm · ${region} · ${mode === "fast" ? "Fast" : "Deep"} · oświata/urzędy ${includePublic ? "ON" : "OFF"}`;
@@ -120,6 +117,10 @@ export function LeadFactoryWorkspace() {
   }
 
   async function startRun() {
+    if (!validTarget) {
+      setError("Target partii musi być liczbą całkowitą od 1 do 500.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setCurrentRun(null);
@@ -176,12 +177,16 @@ export function LeadFactoryWorkspace() {
             </label>
             <label className="block">
               <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-[#81909c]">Target partii</span>
-              <div className="relative">
-                <select value={target} onChange={(e) => setTarget(Number(e.target.value))} className="h-11 w-full appearance-none rounded-xl border border-[#dfe6ed] bg-white px-3 pr-9 text-sm font-semibold text-[#34434e] outline-none transition focus:border-[#9fbaf1]">
-                  {targetOptions.map((value) => <option key={value} value={value}>{value} rekordów</option>)}
-                </select>
-                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-3.5 text-[#84919c]"/>
-              </div>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                step={1}
+                value={target}
+                onChange={(e) => setTarget(Number(e.target.value))}
+                className={`h-11 w-full rounded-xl border bg-white px-3 text-sm font-semibold text-[#34434e] outline-none transition focus:border-[#9fbaf1] ${validTarget ? "border-[#dfe6ed]" : "border-red-300"}`}
+              />
+              <div className="mt-1.5 text-xs text-[#8a98a4]">Dowolna liczba od 1 do 500 rekordów.</div>
             </label>
           </div>
 
@@ -209,7 +214,7 @@ export function LeadFactoryWorkspace() {
 
           {error && <div className="flex gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700"><AlertCircle size={17}/><span>{error}</span></div>}
 
-          <button type="button" disabled={loading} onClick={startRun} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#568deb] px-4 text-sm font-bold text-white transition hover:bg-[#477fdf] disabled:cursor-not-allowed disabled:bg-[#9eb9e8]">
+          <button type="button" disabled={loading || !validTarget} onClick={startRun} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#568deb] px-4 text-sm font-bold text-white transition hover:bg-[#477fdf] disabled:cursor-not-allowed disabled:bg-[#9eb9e8]">
             {loading ? <Loader2 size={16} className="animate-spin"/> : <Play size={16}/>} {loading ? "Kampania uruchomiona — śledzę status" : "Uruchom kampanię"}
           </button>
         </div>
