@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       target?: number;
       mode?: LeadFactoryMode;
       includePublic?: boolean;
+      resetSources?: boolean;
     };
     if (body.source !== "companies" && body.source !== "jdg") {
       return NextResponse.json({ error: "Nieprawidłowy profil kampanii." }, { status: 400 });
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       target: Number(body.target),
       mode: body.mode,
       includePublic: Boolean(body.includePublic),
+      resetSources: Boolean(body.resetSources),
       requestId,
     });
 
