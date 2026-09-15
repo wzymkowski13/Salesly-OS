@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckSquare2,
   Factory,
+  GitBranch,
   LayoutDashboard,
   RefreshCcw,
   Settings,
@@ -26,6 +27,7 @@ const sections = [
     label: "Sprzedaż",
     items: [
       { href: "/crm", label: "CRM", icon: Users },
+      { href: "/pipeline", label: "Pipeline", icon: GitBranch },
       { href: "/renewals", label: "Odnowienia", icon: RefreshCcw },
     ],
   },
