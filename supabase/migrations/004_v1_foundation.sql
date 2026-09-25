@@ -27,6 +27,24 @@ create index if not exists user_permissions_user_idx on public.user_permissions(
 
 alter table public.user_permissions enable row level security;
 
+create or replace function public.has_permission(permission_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1
+    from public.user_permissions up
+    where up.user_id = auth.uid()
+      and up.permission_key = permission_name
+  );
+$;
+
+revoke all on function public.has_permission(text) from public;
+grant execute on function public.has_permission(text) to authenticated;
+
 drop policy if exists user_permissions_read_self on public.user_permissions;
 create policy user_permissions_read_self
 on public.user_permissions
@@ -34,12 +52,7 @@ for select
 to authenticated
 using (
   public.is_active_app_user()
-  and (user_id = auth.uid() or exists (
-    select 1
-    from public.user_permissions up
-    where up.user_id = auth.uid()
-      and up.permission_key = 'admin.permissions'
-  ))
+  and (user_id = auth.uid() or public.has_permission('admin.permissions'))
 );
 
 -- Existing data is explicitly classified as work data.
