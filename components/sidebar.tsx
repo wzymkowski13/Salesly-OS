@@ -9,6 +9,7 @@ import {
   CheckSquare2,
   Files,
   Factory,
+  GitBranch,
   LayoutDashboard,
   RefreshCcw,
   Settings,
@@ -28,6 +29,7 @@ const workSections = [
     label: "Sprzedaż",
     items: [
       { href: "/crm", label: "CRM", icon: Users },
+      { href: "/pipeline", label: "Pipeline", icon: GitBranch },
       { href: "/renewals", label: "Odnowienia", icon: RefreshCcw },
     ],
   },
