@@ -15,6 +15,7 @@ function parseReminder(value: string) {
 function taskPayload(formData: FormData, fallbackUserId: string) {
   const dueTime = String(formData.get("due_time") || "").trim();
   const reminder = String(formData.get("reminder_at") || "").trim();
+  const scope = String(formData.get("scope") || "").trim();
   return {
     title: String(formData.get("title") || "").trim(),
     description: String(formData.get("description") || "").trim() || null,
@@ -25,6 +26,7 @@ function taskPayload(formData: FormData, fallbackUserId: string) {
     due_date: String(formData.get("due_date") || "") || null,
     due_time: dueTime || null,
     reminder_at: parseReminder(reminder),
+    ...(scope ? { scope } : {}),
   };
 }
 
@@ -38,7 +40,7 @@ export async function createTask(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const payload = taskPayload(formData, user.id);
-  const { error } = await supabase.from("tasks").insert({ ...payload, created_by: user.id });
+  const { error } = await supabase.from("tasks").insert({ scope: "work", ...payload, created_by: user.id });
   if (error) throw new Error(error.message);
   revalidateTaskViews();
 }

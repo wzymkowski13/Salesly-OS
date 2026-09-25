@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth";
 import { todayInWarsaw, warsawDayRange } from "@/lib/date";
 import { SectionHeader } from "@/components/section-header";
 import { StatCard } from "@/components/stat-card";
-import { EcosystemOverview } from "@/components/ecosystem-overview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,12 +21,12 @@ export default async function DashboardPage() {
   const { start: dayStart, end: dayEnd } = warsawDayRange(today);
 
   const [tasksRes, overdueRes, clientsRes, renewalsRes, anniversariesRes, eventsRes, notificationsRes, activityRes] = await Promise.all([
-    supabase.from("tasks").select("id,title,status,priority,due_date,due_time,clients(name)").eq("assigned_to", user.id).eq("due_date", today).neq("status", "done").order("due_time"),
-    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", user.id).lt("due_date", today).neq("status", "done"),
+    supabase.from("tasks").select("id,title,status,priority,due_date,due_time,clients(name)").eq("assigned_to", user.id).eq("scope", "work").eq("due_date", today).neq("status", "done").order("due_time"),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", user.id).eq("scope", "work").lt("due_date", today).neq("status", "done"),
     supabase.from("clients").select("id", { count: "exact", head: true }).is("archived_at", null).eq("status", "active"),
     supabase.from("renewal_queue").select("*").gte("days_left", 0).lte("days_left", 60).order("days_left").limit(5),
     supabase.from("anniversary_queue").select("*").gte("days_left", 0).lte("days_left", 30).order("days_left").limit(5),
-    supabase.from("events").select("id,title,starts_at,event_type,clients(name)").gte("starts_at", dayStart).lte("starts_at", dayEnd).order("starts_at").limit(12),
+    supabase.from("events").select("id,title,starts_at,event_type,clients(name)").eq("scope", "work").gte("starts_at", dayStart).lte("starts_at", dayEnd).order("starts_at").limit(12),
     supabase.from("notifications").select("id,title,body,href,created_at,read_at").eq("user_id", user.id).is("read_at", null).order("created_at", { ascending: false }).limit(5),
     supabase.from("activities").select("id,title,activity_type,occurred_at,clients(id,name)").order("occurred_at", { ascending: false }).limit(5),
   ]);
@@ -57,7 +56,6 @@ export default async function DashboardPage() {
       <StatCard label="Aktywni klienci" value={clientsRes.count || 0} hint={`${anniversaries.length} rocznic do 30 dni`} icon={Users} tone="slate"/>
     </div>
 
-    <EcosystemOverview />
 
     <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
       <Card>

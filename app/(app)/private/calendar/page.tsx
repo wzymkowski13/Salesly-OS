@@ -25,7 +25,7 @@ function timeInWarsaw(value?: string | null) {
   return new Intl.DateTimeFormat("pl-PL", { timeZone:"Europe/Warsaw", hour:"2-digit", minute:"2-digit", hourCycle:"h23" }).format(new Date(value));
 }
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
+export default async function PrivateCalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
   await requireUser();
   const params = await searchParams;
   const view = (["month","week","day"].includes(params.view || "") ? params.view! : "month") as "month"|"week"|"day";
@@ -41,7 +41,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   const supabase = await createClient();
   const [{ data: events }, { data: tasks }, { data: clients }, { data: profiles }] = await Promise.all([
-    supabase.from("events").select("*, clients(name)").eq("scope", "work").gte("starts_at", rangeStart).lte("starts_at", rangeEnd).order("starts_at"),
+    supabase.from("events").select("*, clients(name)").in("scope", ["private", "study"]).gte("starts_at", rangeStart).lte("starts_at", rangeEnd).order("starts_at"),
     supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").eq("scope", "work").gte("due_date", fromDate).lte("due_date", toDate).not("due_time","is",null).neq("status","done").order("due_time"),
     supabase.from("clients").select("id,name").is("archived_at", null).order("name").limit(500),
     supabase.from("profiles").select("id,full_name,email").eq("is_active", true).order("full_name"),
@@ -83,10 +83,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const title = view === "month" ? format(focus,"LLLL yyyy",{locale:pl}) : view === "week" ? `${format(from,"d MMM",{locale:pl})} – ${format(to,"d MMM yyyy",{locale:pl})}` : format(focus,"EEEE, d MMMM yyyy",{locale:pl});
   const focusDate = format(focus,"yyyy-MM-dd");
 
-  const addEventForm = <form action={createEvent} data-salesly-create="event" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><input type="hidden" name="scope" value="work"/>
+  const addEventForm = <form action={createEvent} data-salesly-create="event" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł</label><Input name="title" required placeholder="Np. spotkanie z ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required defaultValue={focusDate}/></div>
-    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label><Select name="event_type"><option value="meeting">Spotkanie</option><option value="call">Telefon</option><option value="follow_up">Follow-up</option><option value="private">Prywatne</option><option value="other">Inne</option></Select></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Obszar</label><Select name="scope" defaultValue="private"><option value="private">Prywatne</option><option value="study">Studia</option></Select></div><div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label><Select name="event_type"><option value="meeting">Spotkanie</option><option value="call">Telefon</option><option value="follow_up">Follow-up</option><option value="private">Prywatne</option><option value="other">Inne</option></Select></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><TimePicker name="start_time" defaultValue="09:00" required/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><TimePicker name="end_time" optional/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id"><option value="">— bez klienta —</option>{(clients||[]).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
@@ -95,17 +95,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   </form>;
 
   return <div className="space-y-6">
-    <SectionHeader title="Kalendarz" action={<FormDisclosure label="Dodaj wydarzenie" align="right">{addEventForm}</FormDisclosure>} />
+    <SectionHeader title="Kalendarz prywatny" action={<FormDisclosure label="Dodaj wydarzenie" align="right">{addEventForm}</FormDisclosure>} />
 
     <div className="flex flex-col gap-4 rounded-[18px] border border-[#dfe6ee] bg-white p-3 shadow-[0_1px_2px_rgba(28,44,60,.03)] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-1.5">
-        <Link aria-label="Poprzedni okres" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e1e7ed] text-[#657580] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-95" href={`/calendar?view=${view}&date=${prev}`}><ChevronLeft size={17}/></Link>
-        <Link className="inline-flex h-9 items-center rounded-xl border border-[#e1e7ed] px-3 text-sm font-semibold text-[#485965] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-[.98]" href={`/calendar?view=${view}&date=${todayInWarsaw()}`}>Dzisiaj</Link>
-        <Link aria-label="Następny okres" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e1e7ed] text-[#657580] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-95" href={`/calendar?view=${view}&date=${next}`}><ChevronRight size={17}/></Link>
+        <Link aria-label="Poprzedni okres" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e1e7ed] text-[#657580] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-95" href={`/private/calendar?view=${view}&date=${prev}`}><ChevronLeft size={17}/></Link>
+        <Link className="inline-flex h-9 items-center rounded-xl border border-[#e1e7ed] px-3 text-sm font-semibold text-[#485965] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-[.98]" href={`/private/calendar?view=${view}&date=${todayInWarsaw()}`}>Dzisiaj</Link>
+        <Link aria-label="Następny okres" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e1e7ed] text-[#657580] transition-all hover:-translate-y-px hover:bg-[#f5f8fa] active:scale-95" href={`/private/calendar?view=${view}&date=${next}`}><ChevronRight size={17}/></Link>
       </div>
       <div className="flex items-center gap-2"><CalendarDays size={17} className="text-[#568deb]"/><h2 className="text-base font-bold capitalize text-[#30404b] sm:text-lg">{title}</h2></div>
       <div className="flex rounded-xl bg-[#f1f4f8] p-1">
-        {["day","week","month"].map(v=><Link key={v} href={`/calendar?view=${v}&date=${focusDate}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-[.98]", view===v ? "bg-[#e8f0ff] text-[#315fc9] shadow-sm ring-1 ring-[#d5e2ff]" : "text-[#72828e] hover:bg-white hover:text-[#40515d]")}>{v === "day" ? "Dzień" : v === "week" ? "Tydzień" : "Miesiąc"}</Link>)}
+        {["day","week","month"].map(v=><Link key={v} href={`/private/calendar?view=${v}&date=${focusDate}`} className={cn("rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-[.98]", view===v ? "bg-[#e8f0ff] text-[#315fc9] shadow-sm ring-1 ring-[#d5e2ff]" : "text-[#72828e] hover:bg-white hover:text-[#40515d]")}>{v === "day" ? "Dzień" : v === "week" ? "Tydzień" : "Miesiąc"}</Link>)}
       </div>
     </div>
 

@@ -11,22 +11,22 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { TaskBoard, type TaskBoardTask } from "@/components/task-board";
 
-export default async function TasksPage() {
+export default async function PrivateTasksPage() {
   await requireUser();
   const supabase = await createClient();
   const [{ data: tasks }, { data: profiles }, { data: clients }] = await Promise.all([
-    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").eq("scope", "work").order("created_at", { ascending: false }).limit(300),
+    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").in("scope", ["private", "study"]).order("created_at", { ascending: false }).limit(300),
     supabase.from("profiles").select("id,full_name,email").eq("is_active", true).order("full_name"),
     supabase.from("clients").select("id,name").is("archived_at", null).order("name").limit(500),
   ]);
 
-  const newTaskForm = <form action={createTask} data-salesly-create="task" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><input type="hidden" name="scope" value="work"/>
+  const newTaskForm = <form action={createTask} data-salesly-create="task" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
     <div className="md:col-span-2 xl:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa</label><Input name="title" required placeholder="Np. oddzwonić do ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Termin</label><Input name="due_date" type="date"/></div>
 
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Godzina</label><TimePicker name="due_time" optional/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przypisz</label><Select name="assigned_to">{(profiles || []).map((p:any)=><option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}</Select></div>
-    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Priorytet</label><Select name="priority" defaultValue="normal"><option value="low">Niski</option><option value="normal">Normalny</option><option value="high">Wysoki</option><option value="urgent">Pilny</option></Select></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Obszar</label><Select name="scope" defaultValue="private"><option value="private">Prywatne</option><option value="study">Studia</option></Select></div><div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Priorytet</label><Select name="priority" defaultValue="normal"><option value="low">Niski</option><option value="normal">Normalny</option><option value="high">Wysoki</option><option value="urgent">Pilny</option></Select></div>
 
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id"><option value="">— bez klienta —</option>{(clients || []).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
     <div className="md:col-span-1 xl:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przypomnienie</label><DateTimePicker name="reminder_at"/></div>
@@ -36,7 +36,7 @@ export default async function TasksPage() {
   </form>;
 
   return <div className="space-y-7">
-    <SectionHeader title="Zadania" action={<FormDisclosure label="Dodaj zadanie" align="right">{newTaskForm}</FormDisclosure>} />
+    <SectionHeader title="Zadania prywatne" action={<FormDisclosure label="Dodaj zadanie" align="right">{newTaskForm}</FormDisclosure>} />
     <TaskBoard initialTasks={(tasks || []) as TaskBoardTask[]} profiles={(profiles || []) as any[]} clients={(clients || []) as any[]}/>
   </div>;
 }
