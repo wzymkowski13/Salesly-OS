@@ -3,19 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Bell,
+  BookOpenCheck,
   CalendarDays,
   CheckSquare2,
+  Files,
   Factory,
   LayoutDashboard,
   RefreshCcw,
   Settings,
   Users,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const sections = [
+const workSections = [
   {
     label: null,
     items: [
@@ -30,18 +32,6 @@ const sections = [
     ],
   },
   {
-    label: "Call Center",
-    items: [
-      { href: "/sales-metrics", label: "SalesMetrics", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "Leady",
-    items: [
-      { href: "/lead-factory", label: "Lead Factory", icon: Factory },
-    ],
-  },
-  {
     label: "Organizacja",
     items: [
       { href: "/tasks", label: "Zadania", icon: CheckSquare2 },
@@ -49,15 +39,56 @@ const sections = [
       { href: "/notifications", label: "Powiadomienia", icon: Bell },
     ],
   },
+  {
+    label: "Leady",
+    items: [
+      { href: "/lead-factory", label: "LeadFactory", icon: Factory },
+    ],
+  },
+];
+
+const privateSections = [
+  {
+    label: null,
+    items: [
+      { href: "/private", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Organizacja",
+    items: [
+      { href: "/private/tasks", label: "Zadania", icon: CheckSquare2 },
+      { href: "/private/calendar", label: "Kalendarz", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Prywatne",
+    items: [
+      { href: "/private/study", label: "Studia", icon: BookOpenCheck },
+      { href: "/private/finance", label: "Finanse", icon: WalletCards },
+      { href: "/private/documents", label: "Dokumenty", icon: Files },
+    ],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  if (pathname === "/home") return null;
+
+  const isPrivate = pathname.startsWith("/private");
+  const sections = isPrivate ? privateSections : workSections;
 
   return <aside className="hidden w-[236px] shrink-0 border-r border-[#dfe6ee] bg-[#f7f9fc] lg:flex lg:flex-col">
     <div className="flex h-[74px] items-center border-b border-[#e5ebf1] px-5">
-      <div className="flex min-w-0 items-center">
+      <Link href="/home" className="flex min-w-0 items-center" title="Salesly OS — Start">
         <img src="/salesly-logo.png" alt="Salesly OS" className="h-[32px] w-auto max-w-[170px] object-contain" />
+      </Link>
+    </div>
+
+    <div className="px-4 pt-4">
+      <div className="rounded-xl border border-[#e1e8ef] bg-white px-3 py-2.5">
+        <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#9aa6af]">Środowisko</div>
+        <div className="mt-0.5 text-sm font-bold text-[#334550]">{isPrivate ? "Prywatne" : "Służbowe"}</div>
       </div>
     </div>
 
@@ -67,7 +98,7 @@ export function Sidebar() {
           {section.label && <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9aa7b2]">{section.label}</div>}
           <div className="space-y-1">
             {section.items.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+              const active = pathname === href || (href !== "/private" && href !== "/dashboard" && pathname.startsWith(`${href}/`));
 
               return <Link
                 key={href}
@@ -105,16 +136,6 @@ export function Sidebar() {
         <Settings size={18} className={pathname.startsWith("/settings") ? "text-[#568deb]" : "text-[#82919d]"}/>
         <span>Ustawienia</span>
       </Link>
-    </div>
-
-    <div className="px-3 pb-4">
-      <div className="rounded-2xl border border-[#dfe7f0] bg-white px-4 py-3 shadow-[0_4px_16px_rgba(31,48,65,.035)]">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7e8d99]">Salesly OS</div>
-        <div className="mt-1 text-xs font-medium text-[#536674]">Centrum operacyjne</div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#edf2f7]">
-          <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-[#7f9bed] to-[#568deb]"/>
-        </div>
-      </div>
     </div>
   </aside>;
 }
