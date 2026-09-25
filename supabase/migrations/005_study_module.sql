@@ -75,14 +75,17 @@ create table if not exists public.study_grades (
 
 create index if not exists study_grades_subject_idx on public.study_grades(subject_id, graded_at);
 
+drop trigger if exists study_subjects_updated on public.study_subjects;
 create trigger study_subjects_updated
 before update on public.study_subjects
 for each row execute function public.set_updated_at();
 
+drop trigger if exists study_classes_updated on public.study_classes;
 create trigger study_classes_updated
 before update on public.study_classes
 for each row execute function public.set_updated_at();
 
+drop trigger if exists study_grades_updated on public.study_grades;
 create trigger study_grades_updated
 before update on public.study_grades
 for each row execute function public.set_updated_at();
@@ -91,6 +94,7 @@ alter table public.study_subjects enable row level security;
 alter table public.study_classes enable row level security;
 alter table public.study_grades enable row level security;
 
+drop policy if exists study_subjects_own on public.study_subjects;
 create policy study_subjects_own
 on public.study_subjects
 for all
@@ -98,6 +102,7 @@ to authenticated
 using (public.is_active_app_user() and user_id = auth.uid())
 with check (public.is_active_app_user() and user_id = auth.uid());
 
+drop policy if exists study_classes_own on public.study_classes;
 create policy study_classes_own
 on public.study_classes
 for all
@@ -105,6 +110,7 @@ to authenticated
 using (public.is_active_app_user() and user_id = auth.uid())
 with check (public.is_active_app_user() and user_id = auth.uid());
 
+drop policy if exists study_grades_own on public.study_grades;
 create policy study_grades_own
 on public.study_grades
 for all
@@ -112,14 +118,17 @@ to authenticated
 using (public.is_active_app_user() and user_id = auth.uid())
 with check (public.is_active_app_user() and user_id = auth.uid());
 
+drop trigger if exists audit_study_subjects on public.study_subjects;
 create trigger audit_study_subjects
 after insert or update or delete on public.study_subjects
 for each row execute function public.write_audit_log();
 
+drop trigger if exists audit_study_classes on public.study_classes;
 create trigger audit_study_classes
 after insert or update or delete on public.study_classes
 for each row execute function public.write_audit_log();
 
+drop trigger if exists audit_study_grades on public.study_grades;
 create trigger audit_study_grades
 after insert or update or delete on public.study_grades
 for each row execute function public.write_audit_log();
