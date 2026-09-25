@@ -263,12 +263,15 @@ Miesiąc / kwartał / rok:
 - zachowanie istniejących funkcji bez regresji
 
 ### Etap B — Studia
-- tabele i CRUD przedmiotów
-- zajęcia
-- frekwencja
-- ECTS
-- oceny / wagi / średnia
-- zaliczenia
+- [x] tabele i CRUD przedmiotów
+- [x] zajęcia
+- [x] frekwencja per przedmiot
+- [x] ECTS
+- [x] oceny / wagi / średnia ważona
+- [x] zaliczenia
+- [ ] import planu z Google Calendar
+- [ ] import ICS
+- [ ] notatki Google Docs / Drive
 
 ### Etap C — Integracje studiów
 - Google Calendar
