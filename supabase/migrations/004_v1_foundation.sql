@@ -1,9 +1,12 @@
 -- Salesly OS v1 foundation: scopes + granular permissions
 
-do $$ begin
+do $block$
+begin
   create type public.workspace_scope as enum ('work', 'private', 'study', 'leadfactory');
-exception when duplicate_object then null;
-end $$;
+exception
+  when duplicate_object then null;
+end
+$block$;
 
 alter table public.tasks
   add column if not exists scope public.workspace_scope not null default 'work';
@@ -23,7 +26,8 @@ create table if not exists public.user_permissions (
   unique(user_id, permission_key)
 );
 
-create index if not exists user_permissions_user_idx on public.user_permissions(user_id);
+create index if not exists user_permissions_user_idx
+  on public.user_permissions(user_id);
 
 alter table public.user_permissions enable row level security;
 
@@ -33,28 +37,36 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $function$
   select exists (
     select 1
     from public.user_permissions up
     where up.user_id = auth.uid()
       and up.permission_key = permission_name
   );
-$;
+$function$;
 
 revoke all on function public.has_permission(text) from public;
 grant execute on function public.has_permission(text) to authenticated;
 
 drop policy if exists user_permissions_read_self on public.user_permissions;
+
 create policy user_permissions_read_self
 on public.user_permissions
 for select
 to authenticated
 using (
   public.is_active_app_user()
-  and (user_id = auth.uid() or public.has_permission('admin.permissions'))
+  and (
+    user_id = auth.uid()
+    or public.has_permission('admin.permissions')
+  )
 );
 
--- Existing data is explicitly classified as work data.
-update public.tasks set scope = 'work' where scope is null;
-update public.events set scope = 'work' where scope is null;
+update public.tasks
+set scope = 'work'
+where scope is null;
+
+update public.events
+set scope = 'work'
+where scope is null;
