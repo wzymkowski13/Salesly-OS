@@ -9,6 +9,7 @@ function eventPayload(formData: FormData) {
   const date = String(formData.get("date") || "");
   const startTime = String(formData.get("start_time") || "09:00");
   const endTime = String(formData.get("end_time") || "");
+  const scope = String(formData.get("scope") || "").trim();
   const startsAt = warsawLocalToUtc(date, startTime);
   const endsAt = endTime ? warsawLocalToUtc(date, endTime) : null;
   return {
@@ -18,6 +19,7 @@ function eventPayload(formData: FormData) {
     client_id: String(formData.get("client_id") || "") || null,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt?.toISOString() || null,
+    ...(scope ? { scope } : {}),
   };
 }
 
@@ -30,7 +32,7 @@ export async function createEvent(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const payload = eventPayload(formData);
-  const { error } = await supabase.from("events").insert({ ...payload, created_by: user.id });
+  const { error } = await supabase.from("events").insert({ scope: "work", ...payload, created_by: user.id });
   if (error) throw new Error(error.message);
   revalidateEventViews();
 }
