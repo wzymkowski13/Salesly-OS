@@ -15,12 +15,12 @@ export default async function TasksPage() {
   await requireUser();
   const supabase = await createClient();
   const [{ data: tasks }, { data: profiles }, { data: clients }] = await Promise.all([
-    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").order("created_at", { ascending: false }).limit(300),
+    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").eq("scope", "work").order("created_at", { ascending: false }).limit(300),
     supabase.from("profiles").select("id,full_name,email").eq("is_active", true).order("full_name"),
     supabase.from("clients").select("id,name").is("archived_at", null).order("name").limit(500),
   ]);
 
-  const newTaskForm = <form action={createTask} data-salesly-create="task" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+  const newTaskForm = <form action={createTask} data-salesly-create="task" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><input type="hidden" name="scope" value="work"/>
     <div className="md:col-span-2 xl:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa</label><Input name="title" required placeholder="Np. oddzwonić do ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Termin</label><Input name="due_date" type="date"/></div>
 
