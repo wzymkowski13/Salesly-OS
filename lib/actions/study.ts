@@ -20,10 +20,12 @@ function optionalNumber(formData: FormData, key: string) {
   return Number.isFinite(value) ? value : null;
 }
 
-function revalidateStudy(subjectId?: string) {
+function revalidateStudy(subjectId?: string, classId?: string) {
   revalidatePath("/private");
   revalidatePath("/private/study");
+  revalidatePath("/private/calendar");
   if (subjectId) revalidatePath(`/private/study/${subjectId}`);
+  if (subjectId && classId) revalidatePath(`/private/study/${subjectId}/classes/${classId}`);
 }
 
 export async function createStudySubject(formData: FormData) {
@@ -137,7 +139,22 @@ export async function setStudyAttendance(classId: string, subjectId: string, sta
   const supabase = await createClient();
   const { error } = await supabase.from("study_classes").update({ attendance_status: status }).eq("id", classId).eq("user_id", user.id);
   if (error) throw new Error(error.message);
-  revalidateStudy(subjectId);
+  revalidateStudy(subjectId, classId);
+}
+
+export async function updateStudyClassNotes(classId: string, subjectId: string, formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("study_classes")
+    .update({ notes: optionalText(formData, "notes") })
+    .eq("id", classId)
+    .eq("subject_id", subjectId)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidateStudy(subjectId, classId);
+  return { ok: true, message: "Notatka zapisana" };
 }
 
 export async function deleteStudyClass(classId: string, subjectId: string) {
@@ -165,10 +182,13 @@ export async function createStudyGrade(subjectId: string, formData: FormData) {
     weight,
     graded_at: optionalText(formData, "graded_at"),
     notes: optionalText(formData, "notes"),
+    class_id: optionalText(formData, "class_id"),
   });
 
   if (error) throw new Error(error.message);
-  revalidateStudy(subjectId);
+  const classId = optionalText(formData, "class_id") || undefined;
+  revalidateStudy(subjectId, classId);
+  return { ok: true, message: classId ? "Ocena dodana do zajęć" : "Ocena dodana" };
 }
 
 export async function updateStudyGrade(gradeId: string, subjectId: string, formData: FormData) {
@@ -181,10 +201,13 @@ export async function updateStudyGrade(gradeId: string, subjectId: string, formD
     weight: optionalNumber(formData, "weight") ?? 0,
     graded_at: optionalText(formData, "graded_at"),
     notes: optionalText(formData, "notes"),
+    class_id: optionalText(formData, "class_id"),
   }).eq("id", gradeId).eq("user_id", user.id);
 
   if (error) throw new Error(error.message);
-  revalidateStudy(subjectId);
+  const classId = optionalText(formData, "class_id") || undefined;
+  revalidateStudy(subjectId, classId);
+  return { ok: true, message: "Ocena zaktualizowana" };
 }
 
 export async function deleteStudyGrade(gradeId: string, subjectId: string) {
