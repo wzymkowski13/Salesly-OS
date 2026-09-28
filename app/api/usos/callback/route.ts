@@ -8,6 +8,8 @@ import {
 } from "@/lib/usos";
 import { syncUsosForUser } from "@/lib/usos-sync";
 
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const oauthToken = url.searchParams.get("oauth_token");
