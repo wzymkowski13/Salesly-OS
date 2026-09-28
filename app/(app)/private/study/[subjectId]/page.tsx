@@ -14,6 +14,7 @@ import {
 } from "@/lib/actions/study";
 import { createStudyGoogleDoc, deleteStudyNote, importStudyFromGoogle, importStudyIcs } from "@/lib/actions/google-study";
 import { FormDisclosure } from "@/components/form-disclosure";
+import { ActionForm } from "@/components/action-form";
 import { SectionHeader } from "@/components/section-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,7 +82,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
   const upcoming = (classes || []).filter((item: any) => dateInWarsaw(item.starts_at) >= today);
   const past = (classes || []).filter((item: any) => dateInWarsaw(item.starts_at) < today).reverse();
 
-  const editForm = <form action={updateStudySubject.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+  const editForm = <ActionForm action={updateStudySubject.bind(null, subjectId)} successMessage="Przedmiot zaktualizowany" className="grid gap-4 md:grid-cols-2">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przedmiot</label><Input name="name" required defaultValue={subject.name}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Semestr</label><Input name="semester" defaultValue={subject.semester || ""}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Prowadzący</label><Input name="lecturer" defaultValue={subject.lecturer || ""}/></div>
@@ -92,9 +93,9 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Warunek zaliczenia</label><Textarea name="pass_condition" rows={3} defaultValue={subject.pass_condition || ""}/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Notatki</label><Textarea name="notes" rows={3} defaultValue={subject.notes || ""}/></div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit">Zapisz zmiany</Button></div>
-  </form>;
+  </ActionForm>;
 
-  const addClassForm = <form action={createStudyClass.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+  const addClassForm = <ActionForm action={createStudyClass.bind(null, subjectId)} successMessage="Zajęcia dodane" resetOnSuccess className="grid gap-4 md:grid-cols-2">
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="workshop">Warsztaty</option><option value="other">Inne</option></Select></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><TimePicker name="start_time" defaultValue="09:00" required/></div>
@@ -104,7 +105,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł / temat</label><Input name="title" placeholder="Opcjonalnie, np. Wykład 4 — regresja"/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Notatka</label><Textarea name="notes" rows={3}/></div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><CalendarPlus size={15}/> Dodaj zajęcia</Button></div>
-  </form>;
+  </ActionForm>;
 
 
   const googleImportForm = <form action={importStudyFromGoogle.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
@@ -125,31 +126,37 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><Upload size={15}/> Importuj ICS</Button></div>
   </form>;
 
-  const subjectNoteForm = <form action={createStudyGoogleDoc.bind(null, subjectId, null)} className="grid gap-4">
+  const subjectNoteForm = <ActionForm action={createStudyGoogleDoc.bind(null, subjectId, null)} successMessage="Notatka Google Docs utworzona" resetOnSuccess className="grid gap-4">
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa dokumentu</label><Input name="title" placeholder={`${subject.name} — notatki`}/></div>
     <div className="flex justify-end"><Button type="submit"><FileText size={15}/> Utwórz Google Doc</Button></div>
-  </form>;
+  </ActionForm>;
 
-  const addGradeForm = <form action={createStudyGrade.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+  const addGradeForm = <ActionForm action={createStudyGrade.bind(null, subjectId)} successMessage="Ocena dodana" resetOnSuccess className="grid gap-4 md:grid-cols-2">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Element</label><Input name="label" required placeholder="Np. Kolokwium 1"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Ocena</label><Input name="grade" type="number" min="1" max="6" step="0.5" required/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Waga (%)</label><Input name="weight" type="number" min="0" max="100" step="0.5" defaultValue="0"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="graded_at" type="date"/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Notatka</label><Textarea name="notes" rows={2}/></div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><Plus size={15}/> Dodaj ocenę</Button></div>
-  </form>;
+  </ActionForm>;
 
   return <div className="space-y-7">
     <div>
-      <Link href="/private/study" className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7d8a] hover:text-[#3f6fd0]"><ArrowLeft size={15}/> Studia</Link>
-      <SectionHeader
-        title={subject.name}
-        action={<div className="flex gap-2"><FormDisclosure label="Edytuj" variant="secondary" align="right">{editForm}</FormDisclosure><FormDisclosure label="Dodaj zajęcia" align="right">{addClassForm}</FormDisclosure></div>}
-      />
-      <div className="-mt-4 flex flex-wrap gap-2 text-sm text-[#75848f]">
-        {subject.semester && <span>{subject.semester}</span>}
-        {subject.lecturer && <><span>·</span><span>{subject.lecturer}</span></>}
-        <span>·</span><span>{Number(subject.ects || 0)} ECTS</span>
+      <Link href="/private/study" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7d8a] transition hover:text-[#3f6fd0]"><ArrowLeft size={15}/> Studia</Link>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-[-0.035em] text-[#24343f] sm:text-[32px]">{subject.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {subject.semester && <Badge variant="neutral">{subject.semester}</Badge>}
+            <Badge variant="blue">{Number(subject.ects || 0)} ECTS</Badge>
+            {subject.lecturer && <Badge variant="neutral"><span className="inline-flex items-center gap-1.5"><UserRound size={12}/>{subject.lecturer}</span></Badge>}
+            {subject.source === "usos" && <Badge variant="green">USOS</Badge>}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <FormDisclosure label="Edytuj" variant="secondary" align="right">{editForm}</FormDisclosure>
+          <FormDisclosure label="Dodaj zajęcia" align="right">{addClassForm}</FormDisclosure>
+        </div>
       </div>
     </div>
 
@@ -184,10 +191,10 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
             <div className="space-y-2">
               {upcoming.map((item: any) => <div key={item.id} className="rounded-2xl border border-[#e3e9ef] bg-[#fbfcfe] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><div className="font-bold text-[#32424d]">{item.title || classTypeLabel(item.class_type)}</div>{attendanceBadge(item.attendance_status)}</div>
+                  <Link href={`/private/study/${subjectId}/classes/${item.id}`} className="min-w-0 flex-1 rounded-xl p-1 transition hover:bg-white">
+                    <div className="flex flex-wrap items-center gap-2"><div className="font-bold text-[#32424d]">{item.title || classTypeLabel(item.class_type)}</div>{attendanceBadge(item.attendance_status)}<Badge variant="blue">Otwórz kartę</Badge></div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#81909b]"><span>{fmtDateTime(item.starts_at)}{item.ends_at ? ` – ${timeInWarsaw(item.ends_at)}` : ""}</span>{item.room && <span className="inline-flex items-center gap-1"><MapPin size={12}/>{item.room}</span>}{item.lecturer && <span className="inline-flex items-center gap-1"><UserRound size={12}/>{item.lecturer}</span>}</div>
-                  </div>
+                  </Link>
                   <div className="flex flex-wrap gap-1.5">
                     <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant={item.attendance_status === "present" ? "primary" : "soft"}><Check size={14}/> Obecny</Button></form>
                     <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant={item.attendance_status === "absent" ? "danger" : "secondary"}><X size={14}/> Nieobecny</Button></form>
@@ -204,7 +211,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
             <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8c99a4]">Historia</div>
             <div className="space-y-2">
               {past.slice(0, 20).map((item: any) => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-[#edf1f5] px-3 py-3 md:flex-row md:items-center md:justify-between">
-                <div><div className="flex items-center gap-2 text-sm font-semibold text-[#40515d]">{item.title || classTypeLabel(item.class_type)} {attendanceBadge(item.attendance_status)}</div><div className="mt-1 text-xs text-[#8996a0]">{fmtDateTime(item.starts_at)}</div></div>
+                <Link href={`/private/study/${subjectId}/classes/${item.id}`} className="min-w-0 flex-1 rounded-lg px-1 py-0.5 transition hover:bg-[#f7f9fc]"><div className="flex items-center gap-2 text-sm font-semibold text-[#40515d]">{item.title || classTypeLabel(item.class_type)} {attendanceBadge(item.attendance_status)}</div><div className="mt-1 text-xs text-[#8996a0]">{fmtDateTime(item.starts_at)}</div></Link>
                 <div className="flex gap-1.5">
                   <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant="soft">Obecny</Button></form>
                   <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant="secondary">Nieobecny</Button></form>
@@ -251,7 +258,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
           </CardHeader>
           <CardContent className="space-y-2">
             {(grades || []).map((grade: any) => <div key={grade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3">
-              <div className="min-w-0"><div className="truncate text-sm font-semibold text-[#40515d]">{grade.label}</div><div className="mt-0.5 text-xs text-[#8996a0]">{grade.graded_at ? fmtDate(grade.graded_at) : "bez daty"} · waga {Number(grade.weight || 0)}%</div></div>
+              <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><div className="truncate text-sm font-semibold text-[#40515d]">{grade.label}</div>{grade.class_id && <Badge variant="blue">z konkretnych zajęć</Badge>}</div><div className="mt-0.5 text-xs text-[#8996a0]">{grade.graded_at ? fmtDate(grade.graded_at) : "bez daty"} · waga {Number(grade.weight || 0)}%</div></div>
               <div className="flex items-center gap-2"><div className="rounded-xl bg-[#edf3ff] px-3 py-1.5 text-sm font-bold text-[#416fc9]">{Number(grade.grade)}</div><form action={deleteStudyGrade.bind(null, grade.id, subjectId)}><Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></form></div>
             </div>)}
             {!(grades || []).length && <EmptyState title="Brak ocen" description="Dodaj oceny i wagi, a średnia policzy się automatycznie."/>}
