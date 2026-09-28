@@ -111,7 +111,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><Input name="from" type="date" required defaultValue={today}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><Input name="to" type="date" required defaultValue={importTo}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
-    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Fraza z kalendarza</label><Input name="query" placeholder={subject.name}/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Fraza z kalendarza</label><Input name="query" defaultValue={subject.name}/></div>
     <div className="md:col-span-2 text-xs leading-5 text-[#81909b]">Importuje wydarzenia godzinowe z głównego Google Calendar. Fraza jest opcjonalna, ale przy osobnym przedmiocie warto ją podać.</div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><CalendarSync size={15}/> Importuj Google Calendar</Button></div>
   </form>;
@@ -209,6 +209,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
                   <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant="soft">Obecny</Button></form>
                   <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant="secondary">Nieobecny</Button></form>
                   <form action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")}><Button size="sm" variant="ghost">Odwołane</Button></form>
+                  {googleIntegration ? <form action={createStudyGoogleDoc.bind(null, subjectId, item.id)}><Button size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></form> : null}
                 </div>
               </div>)}
             </div>
