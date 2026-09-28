@@ -108,6 +108,7 @@ export async function createStudyClass(subjectId: string, formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidateStudy(subjectId);
+  return { ok: true, message: "Zajęcia dodane" };
 }
 
 export async function updateStudyClass(classId: string, subjectId: string, formData: FormData) {
@@ -131,7 +132,8 @@ export async function updateStudyClass(classId: string, subjectId: string, formD
   }).eq("id", classId).eq("user_id", user.id);
 
   if (error) throw new Error(error.message);
-  revalidateStudy(subjectId);
+  revalidateStudy(subjectId, classId);
+  return { ok: true, message: "Zajęcia zaktualizowane" };
 }
 
 export async function setStudyAttendance(classId: string, subjectId: string, status: "unknown"|"present"|"absent"|"cancelled") {
@@ -140,6 +142,7 @@ export async function setStudyAttendance(classId: string, subjectId: string, sta
   const { error } = await supabase.from("study_classes").update({ attendance_status: status }).eq("id", classId).eq("user_id", user.id);
   if (error) throw new Error(error.message);
   revalidateStudy(subjectId, classId);
+  return { ok: true, message: status === "present" ? "Obecność zaznaczona" : status === "absent" ? "Nieobecność zaznaczona" : status === "cancelled" ? "Zajęcia oznaczone jako odwołane" : "Status obecności wyczyszczony" };
 }
 
 export async function updateStudyClassNotes(classId: string, subjectId: string, formData: FormData) {
