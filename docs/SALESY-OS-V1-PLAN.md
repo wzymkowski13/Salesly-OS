@@ -308,3 +308,19 @@ Foundation jest gotowy, gdy:
 - obecne dane automatycznie pozostają w `work`,
 - obecny CRM/odnowienia/powiadomienia działają bez zmian,
 - SalesMetrics nie miesza się już z dashboardem służbowym.
+
+
+### Etap C2 — USOS Integration v1
+- [x] UJD provider
+- [x] PCz provider
+- [x] OAuth 1.0a onboarding bez kluczy po stronie użytkownika
+- [x] scopes studies + offline_access
+- [x] automatyczne tworzenie / łączenie przedmiotów
+- [x] ECTS z USOS
+- [x] typy WYK / ĆW / LAB / SEM / WAR
+- [x] sale i budynki
+- [x] deduplikacja i aktualizacja po identyfikatorach USOS
+- [x] oznaczanie usuniętych przyszłych zajęć jako odwołane
+- [x] study_classes bezpośrednio w kalendarzu Prywatne
+- [x] synchronizacja po podłączeniu + ręczne „Synchronizuj teraz”
+- [x] dzienny Vercel Cron (po ustawieniu CRON_SECRET)
