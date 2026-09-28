@@ -71,7 +71,7 @@ function activityExternalId(provider: UsosProvider, item: any) {
   if (item.type === "classgroup2" && item.sm_id) return `${provider}:sm:${item.sm_id}`;
   if (item.cgwm_id) return `${provider}:cgwm:${item.cgwm_id}:${day}`;
   if (item.unit_id || item.group_number) {
-    return `${provider}:group:${item.unit_id || "?"}:${item.group_number || "?"}:${day}`;
+    return `${provider}:group:${item.unit_id || "?"}:${item.group_number || "?"}:${day}:${String(item.start_time || "").slice(11, 16)}`;
   }
   if (item.type === "exam" && item.course_id) {
     return `${provider}:exam:${item.course_id}:${day}:${String(item.start_time || "").slice(11, 16)}`;
@@ -141,8 +141,8 @@ async function fetchTimetableFromGroups(
 
   // classgroup_dates2 has no seven-day workspan limit and is substantially more
   // reliable on installations where tt/student occasionally returns HTTP 500.
-  for (let i = 0; i < uniqueGroups.length; i += 4) {
-    const batch = uniqueGroups.slice(i, i + 4);
+  for (let i = 0; i < uniqueGroups.length; i += 8) {
+    const batch = uniqueGroups.slice(i, i + 8);
     const results = await Promise.allSettled(batch.map(async group => {
       const page = await usosGetJson<any[]>(
         provider,
@@ -380,40 +380,43 @@ export async function syncUsosForUser(userId: string) {
     }
 
     const { start, end } = syncWindow(groupsData, selectedTerms);
-    const classActivities = await fetchTimetableFromGroups(
+    // Main sync intentionally uses classgroup_dates2 only. UJD's tt/student
+    // currently returns intermittent HTTP 500 responses and made the whole
+    // request slow enough to hit function timeouts. Exams can be added later
+    // as a separate best-effort sync without blocking the class timetable.
+    const activities = await fetchTimetableFromGroups(
       provider,
       connection.access_token,
       connection.access_token_secret,
       rawGroups
     );
-    const examActivities = await fetchExamActivitiesBestEffort(
-      provider,
-      connection.access_token,
-      connection.access_token_secret,
-      start,
-      end
-    );
-    const activities = [...classActivities, ...examActivities];
 
+    // Read every previously synced USOS class for this provider, not just the
+    // current date window. classgroup_dates2 returns complete group history,
+    // so a windowed lookup could miss an existing row and attempt a duplicate insert.
     const { data: existingClasses, error: classesReadError } = await admin
       .from("study_classes")
       .select("id,external_event_id,starts_at,attendance_status,notes")
       .eq("user_id", userId)
-      .eq("source", `usos:${provider}`)
-      .gte("starts_at", start.toISOString())
-      .lte("starts_at", end.toISOString());
+      .eq("source", `usos:${provider}`);
     if (classesReadError) throw new Error(classesReadError.message);
 
-    const classesByExternal = new Map((existingClasses || []).map(row => [row.external_event_id, row]));
-    const seen = new Set<string>();
-    let insertedClasses = 0;
-    let updatedClasses = 0;
+    const classesByExternal = new Map(
+      (existingClasses || [])
+        .filter(row => row.external_event_id)
+        .map(row => [row.external_event_id as string, row])
+    );
+
+    // Build one row per external event before touching the database. This makes
+    // repeated and concurrent syncs idempotent and avoids N individual writes.
+    const rowsByExternal = new Map<string, any>();
 
     for (const item of activities) {
-      if (!["classgroup", "classgroup2", "exam"].includes(String(item.type))) continue;
+      if (!["classgroup", "classgroup2"].includes(String(item.type))) continue;
       const startAt = localUsosDateTime(item.start_time);
       const endAt = localUsosDateTime(item.end_time);
       if (!startAt) continue;
+      if (startAt < start || startAt > end) continue;
 
       let subjectKey = groupToSubjectKey.get(groupKey(item.unit_id, item.group_number));
       if (!subjectKey && item.unit_id) subjectKey = unitToSubjectKey.get(String(item.unit_id));
@@ -428,9 +431,9 @@ export async function syncUsosForUser(userId: string) {
 
       const type = classType(lang(item.classtype_name) || lang(item.name));
       const externalId = activityExternalId(provider, item);
-      seen.add(externalId);
+      const existing = classesByExternal.get(externalId);
 
-      const payload = {
+      rowsByExternal.set(externalId, {
         user_id: userId,
         subject_id: subjectId,
         class_type: type,
@@ -440,6 +443,8 @@ export async function syncUsosForUser(userId: string) {
         building: lang(item.building_name) || null,
         starts_at: startAt.toISOString(),
         ends_at: endAt?.toISOString() || null,
+        attendance_status: existing?.attendance_status || "unknown",
+        notes: existing?.notes || null,
         source: `usos:${provider}`,
         source_provider: provider,
         external_event_id: externalId,
@@ -447,43 +452,49 @@ export async function syncUsosForUser(userId: string) {
         external_group_number: item.group_number !== undefined && item.group_number !== null ? String(item.group_number) : null,
         external_meeting_id: item.sm_id ? `sm:${item.sm_id}` : item.cgwm_id ? `cgwm:${item.cgwm_id}` : null,
         last_synced_at: new Date().toISOString(),
-      };
-
-      const existing = classesByExternal.get(externalId);
-      if (existing) {
-        const { error } = await admin
-          .from("study_classes")
-          .update(payload)
-          .eq("id", existing.id)
-          .eq("user_id", userId);
-        if (error) throw new Error(error.message);
-        updatedClasses += 1;
-      } else {
-        const { error } = await admin.from("study_classes").insert({
-          ...payload,
-          attendance_status: "unknown",
-        });
-        if (error) throw new Error(error.message);
-        insertedClasses += 1;
-      }
+      });
     }
 
-    let cancelledClasses = 0;
+    const upsertRows = [...rowsByExternal.values()];
+    for (let i = 0; i < upsertRows.length; i += 100) {
+      const chunk = upsertRows.slice(i, i + 100);
+      const { error } = await admin
+        .from("study_classes")
+        .upsert(chunk, { onConflict: "user_id,source,external_event_id" });
+      if (error) throw new Error(error.message);
+    }
+
+    const seen = new Set(rowsByExternal.keys());
+    const insertedClasses = [...seen].filter(id => !classesByExternal.has(id)).length;
+    const updatedClasses = seen.size - insertedClasses;
+
+    // Mark only future rows from the active sync window as cancelled. Historical
+    // attendance and rows from another term are left untouched.
     const now = new Date();
-    for (const existing of existingClasses || []) {
-      if (!existing.external_event_id || seen.has(existing.external_event_id)) continue;
-      if (new Date(existing.starts_at) < now) continue;
-      if (existing.attendance_status === "cancelled") continue;
+    const cancelIds = (existingClasses || [])
+      .filter(existing =>
+        existing.external_event_id &&
+        !seen.has(existing.external_event_id) &&
+        new Date(existing.starts_at) >= now &&
+        new Date(existing.starts_at) >= start &&
+        new Date(existing.starts_at) <= end &&
+        existing.attendance_status !== "cancelled"
+      )
+      .map(existing => existing.id);
+
+    let cancelledClasses = 0;
+    for (let i = 0; i < cancelIds.length; i += 100) {
+      const chunk = cancelIds.slice(i, i + 100);
       const { error } = await admin
         .from("study_classes")
         .update({
           attendance_status: "cancelled",
           last_synced_at: new Date().toISOString(),
         })
-        .eq("id", existing.id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .in("id", chunk);
       if (error) throw new Error(error.message);
-      cancelledClasses += 1;
+      cancelledClasses += chunk.length;
     }
 
     const summary = {
