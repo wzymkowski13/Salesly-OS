@@ -6,6 +6,7 @@ import { createStudySubject } from "@/lib/actions/study";
 import { disconnectUsos, syncUsosNow } from "@/lib/actions/usos";
 import { getUsosConnection, usosProviderList, usosProviderName, type UsosProvider } from "@/lib/usos";
 import { FormDisclosure } from "@/components/form-disclosure";
+import { ActionForm } from "@/components/action-form";
 import { SectionHeader } from "@/components/section-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -123,8 +124,8 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
             {syncSummary?.error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{String(syncSummary.error).slice(0, 300)}</div>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <form action={syncUsosNow}><Button type="submit"><RefreshCw size={15}/> Synchronizuj teraz</Button></form>
-            <form action={disconnectUsos}><Button type="submit" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700"><Unlink size={15}/> Odłącz</Button></form>
+            <ActionForm action={syncUsosNow} successMessage="Synchronizacja USOS zakończona"><Button type="submit"><RefreshCw size={15}/> Synchronizuj teraz</Button></ActionForm>
+            <ActionForm action={disconnectUsos} successMessage="USOS został odłączony"><Button type="submit" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700"><Unlink size={15}/> Odłącz</Button></ActionForm>
           </div>
         </div> : <div>
           <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
