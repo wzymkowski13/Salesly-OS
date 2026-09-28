@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpenCheck, CalendarPlus, Check, CircleSlash2, GraduationCap, MapPin, Plus, UserRound, X } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, CalendarPlus, CalendarSync, Check, CircleSlash2, ExternalLink, FileText, GraduationCap, MapPin, Plus, Upload, UserRound, X } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getGoogleIntegration } from "@/lib/google";
 import {
   createStudyClass,
   createStudyGrade,
@@ -11,6 +12,7 @@ import {
   setStudyAttendance,
   updateStudySubject,
 } from "@/lib/actions/study";
+import { createStudyGoogleDoc, deleteStudyNote, importStudyFromGoogle, importStudyIcs } from "@/lib/actions/google-study";
 import { FormDisclosure } from "@/components/form-disclosure";
 import { SectionHeader } from "@/components/section-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -64,15 +66,18 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
   const { subjectId } = await params;
   const supabase = await createClient();
 
-  const [{ data: subject }, { data: classes }, { data: grades }] = await Promise.all([
+  const [{ data: subject }, { data: classes }, { data: grades }, { data: notes }, googleIntegration] = await Promise.all([
     supabase.from("study_subject_summary").select("*").eq("id", subjectId).eq("user_id", user.id).maybeSingle(),
     supabase.from("study_classes").select("*").eq("subject_id", subjectId).eq("user_id", user.id).order("starts_at", { ascending: true }).limit(200),
     supabase.from("study_grades").select("*").eq("subject_id", subjectId).eq("user_id", user.id).order("graded_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
+    supabase.from("study_notes").select("*").eq("subject_id", subjectId).eq("user_id", user.id).order("created_at", { ascending: false }),
+    getGoogleIntegration(user.id).catch(() => null),
   ]);
 
   if (!subject) notFound();
 
   const today = dateInWarsaw(new Date().toISOString());
+  const importTo = dateInWarsaw(new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString());
   const upcoming = (classes || []).filter((item: any) => dateInWarsaw(item.starts_at) >= today);
   const past = (classes || []).filter((item: any) => dateInWarsaw(item.starts_at) < today).reverse();
 
@@ -99,6 +104,30 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł / temat</label><Input name="title" placeholder="Opcjonalnie, np. Wykład 4 — regresja"/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Notatka</label><Textarea name="notes" rows={3}/></div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><CalendarPlus size={15}/> Dodaj zajęcia</Button></div>
+  </form>;
+
+
+  const googleImportForm = <form action={importStudyFromGoogle.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><Input name="from" type="date" required defaultValue={today}/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><Input name="to" type="date" required defaultValue={importTo}/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Fraza z kalendarza</label><Input name="query" placeholder={subject.name}/></div>
+    <div className="md:col-span-2 text-xs leading-5 text-[#81909b]">Importuje wydarzenia godzinowe z głównego Google Calendar. Fraza jest opcjonalna, ale przy osobnym przedmiocie warto ją podać.</div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit"><CalendarSync size={15}/> Importuj Google Calendar</Button></div>
+  </form>;
+
+  const icsImportForm = <form action={importStudyIcs.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+    <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Plik kalendarza</label><Input name="file" type="file" accept=".ics,text/calendar" required/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><Input name="from" type="date" required defaultValue={today}/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><Input name="to" type="date" required defaultValue={importTo}/></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
+    <div className="md:col-span-2 text-xs leading-5 text-[#81909b]">Działa z eksportami .ics, m.in. Apple Calendar. Obsługiwane są również typowe cykle tygodniowe.</div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit"><Upload size={15}/> Importuj ICS</Button></div>
+  </form>;
+
+  const subjectNoteForm = <form action={createStudyGoogleDoc.bind(null, subjectId, null)} className="grid gap-4">
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa dokumentu</label><Input name="title" placeholder={`${subject.name} — notatki`}/></div>
+    <div className="flex justify-end"><Button type="submit"><FileText size={15}/> Utwórz Google Doc</Button></div>
   </form>;
 
   const addGradeForm = <form action={createStudyGrade.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
@@ -131,6 +160,18 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
       <StatCard label="Termin" value={subject.pass_date ? fmtDate(subject.pass_date) : "—"} hint="zaliczenia" icon={CalendarPlus} tone="amber"/>
     </div>
 
+
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3"><div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><CalendarSync size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Import planu</h2><div className="text-xs text-[#83909b]">Google Calendar albo plik .ics</div></div></div>
+        <div className="flex flex-wrap gap-2">
+          {googleIntegration ? <FormDisclosure label="Google Calendar" compact align="right">{googleImportForm}</FormDisclosure> : <Link href="/settings" className="inline-flex h-9 items-center rounded-xl border border-[#dbe3ec] bg-white px-3 text-sm font-semibold text-[#536674] transition hover:bg-[#f8fafc]">Podłącz Google</Link>}
+          <FormDisclosure label="Import ICS" compact variant="secondary" align="right">{icsImportForm}</FormDisclosure>
+        </div>
+      </CardHeader>
+      <CardContent><p className="text-sm leading-6 text-[#71808b]">Import jest idempotentny: ponowne wczytanie tego samego wydarzenia nie powinno tworzyć duplikatów. Ręczne zajęcia nadal możesz dodawać normalnie.</p></CardContent>
+    </Card>
+
     <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
       <Card>
         <CardHeader>
@@ -151,7 +192,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
                     <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant={item.attendance_status === "present" ? "primary" : "soft"}><Check size={14}/> Obecny</Button></form>
                     <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant={item.attendance_status === "absent" ? "danger" : "secondary"}><X size={14}/> Nieobecny</Button></form>
                     <form action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")}><Button size="sm" variant="ghost"><CircleSlash2 size={14}/> Odwołane</Button></form>
-                    <form action={deleteStudyClass.bind(null, item.id, subjectId)}><Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></form>
+                    {googleIntegration ? <form action={createStudyGoogleDoc.bind(null, subjectId, item.id)}><Button size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></form> : null}<form action={deleteStudyClass.bind(null, item.id, subjectId)}><Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></form>
                   </div>
                 </div>
               </div>)}
@@ -184,6 +225,21 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-xs text-[#8996a0]">Termin</div><div className="mt-1 font-semibold text-[#40515d]">{fmtDate(subject.pass_date)}</div></div>
             </div>
             <div className="rounded-xl border border-[#e7ecf2] p-3"><div className="text-xs font-semibold text-[#8996a0]">Warunek</div><div className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-[#536674]">{subject.pass_condition || "Brak wpisanego warunku zaliczenia."}</div></div>
+          </CardContent>
+        </Card>
+
+
+        <Card>
+          <CardHeader>
+            <div><h2 className="font-bold text-[#2a3944]">Notatki</h2><div className="text-xs text-[#83909b]">Google Docs przypięte do przedmiotu i zajęć</div></div>
+            {googleIntegration ? <FormDisclosure label="Nowa notatka" compact align="right">{subjectNoteForm}</FormDisclosure> : <Link href="/settings" className="text-sm font-semibold text-[#5f79ad]">Podłącz Google</Link>}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(notes || []).map((note: any) => <div key={note.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3">
+              <a href={note.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 group"><div className="truncate text-sm font-semibold text-[#40515d] group-hover:text-[#3e6fd4]">{note.title}</div><div className="mt-0.5 text-xs text-[#8996a0]">{note.class_id ? "Notatka z zajęć" : "Notatka przedmiotu"}</div></a>
+              <div className="flex items-center gap-1"><a href={note.url} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-xl text-[#60717e] transition hover:bg-[#edf2f7]"><ExternalLink size={15}/></a><form action={deleteStudyNote.bind(null, note.id, subjectId)}><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń link</Button></form></div>
+            </div>)}
+            {!(notes || []).length && <EmptyState title="Brak notatek" description={googleIntegration ? "Utwórz dokument dla całego przedmiotu albo bezpośrednio przy konkretnych zajęciach." : "Podłącz Google w Ustawieniach, aby tworzyć dokumenty jednym kliknięciem."}/>}
           </CardContent>
         </Card>
 
