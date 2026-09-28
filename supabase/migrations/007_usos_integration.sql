@@ -69,3 +69,50 @@ on public.usos_sync_runs
 for select
 to authenticated
 using (public.is_active_app_user() and user_id = auth.uid());
+
+
+-- Refresh the summary view so newly added source/external columns are exposed.
+create or replace view public.study_subject_summary
+with (security_invoker = true)
+as
+select
+  s.*,
+  coalesce(att.present_count, 0) as present_count,
+  coalesce(att.absent_count, 0) as absent_count,
+  coalesce(att.cancelled_count, 0) as cancelled_count,
+  case
+    when coalesce(att.present_count, 0) + coalesce(att.absent_count, 0) = 0 then null
+    else round(
+      100.0 * coalesce(att.present_count, 0)
+      / (coalesce(att.present_count, 0) + coalesce(att.absent_count, 0)),
+      1
+    )
+  end as attendance_pct,
+  grades.weighted_average,
+  coalesce(grades.weight_total, 0) as weight_total
+from public.study_subjects s
+left join lateral (
+  select
+    count(*) filter (where c.attendance_status = 'present') as present_count,
+    count(*) filter (where c.attendance_status = 'absent') as absent_count,
+    count(*) filter (where c.attendance_status = 'cancelled') as cancelled_count
+  from public.study_classes c
+  where c.subject_id = s.id
+) att on true
+left join lateral (
+  select
+    case
+      when sum(g.weight) filter (where g.weight > 0) is null then null
+      else round(
+        sum(g.grade * g.weight) filter (where g.weight > 0)
+        / nullif(sum(g.weight) filter (where g.weight > 0), 0),
+        2
+      )
+    end as weighted_average,
+    coalesce(sum(g.weight), 0) as weight_total
+  from public.study_grades g
+  where g.subject_id = s.id
+) grades on true;
+
+revoke all on public.study_subject_summary from anon;
+grant select on public.study_subject_summary to authenticated;
