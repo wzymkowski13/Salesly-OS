@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { todayInWarsaw, warsawDayRange } from "@/lib/date";
 import { SectionHeader } from "@/components/section-header";
 import { FormDisclosure } from "@/components/form-disclosure";
+import { ActionForm } from "@/components/action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,7 +84,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const title = view === "month" ? format(focus,"LLLL yyyy",{locale:pl}) : view === "week" ? `${format(from,"d MMM",{locale:pl})} – ${format(to,"d MMM yyyy",{locale:pl})}` : format(focus,"EEEE, d MMMM yyyy",{locale:pl});
   const focusDate = format(focus,"yyyy-MM-dd");
 
-  const addEventForm = <form action={createEvent} data-salesly-create="event" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><input type="hidden" name="scope" value="work"/>
+  const addEventForm = <ActionForm action={createEvent} successMessage="Wydarzenie dodane do kalendarza" resetOnSuccess className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><input type="hidden" name="scope" value="work"/>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł</label><Input name="title" required placeholder="Np. spotkanie z ABC"/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required defaultValue={focusDate}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label><Select name="event_type"><option value="meeting">Spotkanie</option><option value="call">Telefon</option><option value="follow_up">Follow-up</option><option value="private">Prywatne</option><option value="other">Inne</option></Select></div>
@@ -91,8 +92,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><TimePicker name="end_time" optional/></div>
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Klient</label><Select name="client_id"><option value="">— bez klienta —</option>{(clients||[]).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
     <div className="md:col-span-2 xl:col-span-4"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Opis</label><Textarea name="description" placeholder="Agenda lub notatka"/></div>
-    <div className="md:col-span-2 xl:col-span-4 flex justify-end"><Button>Dodaj wydarzenie</Button></div>
-  </form>;
+    <div className="md:col-span-2 xl:col-span-4 flex justify-end"><Button type="submit">Dodaj wydarzenie</Button></div>
+  </ActionForm>;
 
   return <div className="space-y-6">
     <SectionHeader title="Kalendarz" action={<FormDisclosure label="Dodaj wydarzenie" align="right">{addEventForm}</FormDisclosure>} />
