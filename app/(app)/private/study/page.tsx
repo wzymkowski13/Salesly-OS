@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatCard } from "@/components/stat-card";
 
+export const maxDuration = 60;
+
 function fmtDate(value?: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value + "T12:00:00"));
