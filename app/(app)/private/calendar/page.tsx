@@ -26,7 +26,7 @@ function timeInWarsaw(value?: string | null) {
 }
 
 export default async function PrivateCalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const params = await searchParams;
   const view = (["month","week","day"].includes(params.view || "") ? params.view! : "month") as "month"|"week"|"day";
   const focus = parseISO(params.date || todayInWarsaw());
@@ -40,9 +40,10 @@ export default async function PrivateCalendarPage({ searchParams }: { searchPara
   const rangeEnd = warsawDayRange(toDate).end;
 
   const supabase = await createClient();
-  const [{ data: events }, { data: tasks }, { data: clients }, { data: profiles }] = await Promise.all([
+  const [{ data: events }, { data: tasks }, { data: studyClasses }, { data: clients }, { data: profiles }] = await Promise.all([
     supabase.from("events").select("*, clients(name)").in("scope", ["private", "study"]).gte("starts_at", rangeStart).lte("starts_at", rangeEnd).order("starts_at"),
-    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").eq("scope", "work").gte("due_date", fromDate).lte("due_date", toDate).not("due_time","is",null).neq("status","done").order("due_time"),
+    supabase.from("tasks").select("*, clients(name), profiles!tasks_assigned_to_fkey(full_name,email)").in("scope", ["private","study"]).gte("due_date", fromDate).lte("due_date", toDate).not("due_time","is",null).neq("status","done").order("due_time"),
+    supabase.from("study_classes").select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,source,study_subjects(name)").eq("user_id", user.id).gte("starts_at", rangeStart).lte("starts_at", rangeEnd).order("starts_at"),
     supabase.from("clients").select("id,name").is("archived_at", null).order("name").limit(500),
     supabase.from("profiles").select("id,full_name,email").eq("is_active", true).order("full_name"),
   ]);
@@ -59,6 +60,22 @@ export default async function PrivateCalendarPage({ searchParams }: { searchPara
       client_id: event.client_id,
       clients: event.clients,
       event_type: event.event_type,
+    })),
+    ...(studyClasses || []).map((item:any)=>({
+      id: item.id,
+      kind: "study" as const,
+      title: item.title || item.study_subjects?.name || "Zajęcia",
+      description: null,
+      calendar_date: dateInWarsaw(item.starts_at),
+      start_time: timeInWarsaw(item.starts_at),
+      end_time: timeInWarsaw(item.ends_at) || null,
+      subject_id: item.subject_id,
+      subject_name: item.study_subjects?.name || null,
+      class_type: item.class_type,
+      room: item.room,
+      building: item.building,
+      attendance_status: item.attendance_status,
+      source: item.source,
     })),
     ...(tasks || []).map((task:any)=>({
       id: task.id,
