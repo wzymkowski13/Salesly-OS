@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -19,7 +20,7 @@ import {
 } from "@dnd-kit/core";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
-import { GripVertical, Trash2 } from "lucide-react";
+import { BookOpenCheck, GripVertical, MapPin, Trash2 } from "lucide-react";
 import { deleteEvent, rescheduleEvent, updateEvent } from "@/lib/actions/events";
 import { deleteTask, rescheduleTask, updateTask } from "@/lib/actions/tasks";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +44,7 @@ const pointerFirstCollision: CollisionDetection = (args) => {
 
 export type CalendarItem = {
   id: string;
-  kind: "task" | "event";
+  kind: "task" | "event" | "study";
   title: string;
   description?: string | null;
   calendar_date: string;
@@ -56,9 +57,20 @@ export type CalendarItem = {
   priority?: "low"|"normal"|"high"|"urgent";
   assigned_to?: string | null;
   reminder_at?: string | null;
+  subject_id?: string | null;
+  subject_name?: string | null;
+  class_type?: string | null;
+  room?: string | null;
+  building?: string | null;
+  attendance_status?: string | null;
+  source?: string | null;
 };
 
 function itemStyle(item: CalendarItem) {
+  if (item.kind === "study") {
+    if (item.attendance_status === "cancelled") return "border-[#e0e3e7] border-l-[#aab3bb] bg-[#f4f5f6] text-[#7f8a92] opacity-75";
+    return "border-violet-100 border-l-violet-500 bg-violet-50/80 text-violet-800";
+  }
   if (item.kind === "task") return "border-[#e2e8ef] border-l-[#9aa9b6] bg-[#f6f8fa] text-[#52636f]";
   if (item.event_type === "meeting") return "border-[#d9e6ff] border-l-[#568deb] bg-[#edf3ff] text-[#3768d1]";
   if (item.event_type === "call") return "border-emerald-100 border-l-emerald-500 bg-emerald-50/80 text-emerald-700";
@@ -68,6 +80,14 @@ function itemStyle(item: CalendarItem) {
 }
 
 function itemLabel(item: CalendarItem) {
+  if (item.kind === "study") {
+    if (item.class_type === "lecture") return "Wykład";
+    if (item.class_type === "exercise") return "Ćwiczenia";
+    if (item.class_type === "lab") return "Laboratorium";
+    if (item.class_type === "seminar") return "Seminarium";
+    if (item.class_type === "workshop") return "Warsztaty";
+    return "Studia";
+  }
   if (item.kind === "task") return "Zadanie";
   if (item.event_type === "meeting") return "Spotkanie";
   if (item.event_type === "call") return "Telefon";
@@ -104,11 +124,12 @@ function CalendarItemContent({ item, compact = false, overlay = false }: { item:
     </div>
     <div className="mt-1.5 text-sm font-bold">{item.title}</div>
     {item.clients?.name && <div className="mt-1 text-xs opacity-75">{item.clients.name}</div>}
+    {item.kind === "study" && (item.room || item.building) && <div className="mt-1 text-xs opacity-75">{[item.room ? `sala ${item.room}` : "", item.building || ""].filter(Boolean).join(" · ")}</div>}
   </>;
 }
 
 function DraggableCalendarItem({ item, compact = false, onOpen }: { item: CalendarItem; compact?: boolean; onOpen: () => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `${item.kind}:${item.id}`, data: { item } });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `${item.kind}:${item.id}`, data: { item }, disabled: item.kind === "study" });
   return <button
     ref={setNodeRef}
     type="button"
@@ -116,9 +137,10 @@ function DraggableCalendarItem({ item, compact = false, onOpen }: { item: Calend
     {...listeners}
     {...attributes}
     className={cn(
-      "group relative w-full cursor-grab touch-none select-none border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-[filter,box-shadow,opacity] duration-150 hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing",
+      "group relative w-full touch-none select-none border border-l-[3px] text-left shadow-[0_1px_2px_rgba(31,48,65,.025)] transition-[filter,box-shadow,opacity] duration-150 hover:brightness-[.99] hover:shadow-[0_7px_18px_rgba(31,48,65,.08)] active:cursor-grabbing",
       compact ? "truncate rounded-lg px-2 py-1.5 text-[11px] font-semibold" : "rounded-xl p-3",
       itemStyle(item),
+      item.kind === "study" ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
       isDragging && "opacity-20"
     )}
   >
@@ -210,9 +232,9 @@ export function CalendarWorkspace({
     const overId = event.over ? String(event.over.id) : "";
     if (!overId.startsWith("day:")) return;
     const targetDate = overId.replace("day:", "");
-    const [kind, id] = String(event.active.id).split(":") as ["task"|"event",string];
+    const [kind, id] = String(event.active.id).split(":") as ["task"|"event"|"study",string];
     const item = items.find(candidate => candidate.kind === kind && candidate.id === id);
-    if (!item || item.calendar_date === targetDate) return;
+    if (!item || kind === "study" || item.calendar_date === targetDate) return;
 
     const previous = items;
     setItems(current => current.map(candidate => candidate.kind === kind && candidate.id === id ? { ...candidate, calendar_date: targetDate } : candidate));
@@ -228,7 +250,7 @@ export function CalendarWorkspace({
   }
 
   function saveSelected(formData: FormData) {
-    if (!selected) return;
+    if (!selected || selected.kind === "study") return;
     const previous = items;
 
     if (selected.kind === "event") {
@@ -280,7 +302,7 @@ export function CalendarWorkspace({
 
 
   function removeSelected() {
-    if (!selected) return;
+    if (!selected || selected.kind === "study") return;
     const label = selected.kind === "task" ? "zadanie" : "wydarzenie";
     if (!window.confirm(`Usunąć ${label} „${selected.title}”?`)) return;
     const previous = items;
@@ -381,6 +403,20 @@ export function CalendarWorkspace({
     </DndContext>
 
     <Modal open={Boolean(selected)} onClose={() => setSelectedKey(null)} title={selected?.title || "Pozycja kalendarza"} eyebrow={selected ? itemLabel(selected) : undefined}>
+      {selected?.kind === "study" && <div className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-xs text-[#8996a0]">Termin</div><div className="mt-1 font-semibold text-[#40515d]">{selected.calendar_date} · {selected.start_time}{selected.end_time ? `–${selected.end_time}` : ""}</div></div>
+          <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-xs text-[#8996a0]">Rodzaj</div><div className="mt-1 font-semibold text-[#40515d]">{itemLabel(selected)}</div></div>
+          <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-xs text-[#8996a0]">Sala</div><div className="mt-1 flex items-center gap-1.5 font-semibold text-[#40515d]"><MapPin size={14}/>{selected.room || "—"}</div></div>
+          <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-xs text-[#8996a0]">Budynek</div><div className="mt-1 font-semibold text-[#40515d]">{selected.building || "—"}</div></div>
+        </div>
+        {selected.attendance_status === "cancelled" && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">Te zajęcia są oznaczone jako odwołane.</div>}
+        <div className="flex items-center justify-between gap-3 border-t border-[#edf1f5] pt-4">
+          <div className="text-xs leading-5 text-[#82909b]">{selected.source?.startsWith("usos:") ? "Dane synchronizowane z USOS. Zmiany planu wprowadzaj w źródle." : "Zajęcia studenckie."}</div>
+          {selected.subject_id && <Link href={`/private/study/${selected.subject_id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#4f84e7] bg-[#568deb] px-4 text-sm font-semibold text-white transition hover:bg-[#477ddd]"><BookOpenCheck size={15}/> Otwórz przedmiot</Link>}
+        </div>
+      </div>}
+
       {selected?.kind === "event" && <form key={`event-${selected.id}`} onSubmit={event => { event.preventDefault(); saveSelected(new FormData(event.currentTarget)); }} className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł</label><Input name="title" required defaultValue={selected.title}/></div>
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required defaultValue={selected.calendar_date}/></div>
