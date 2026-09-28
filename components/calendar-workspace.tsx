@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast-provider";
 
 type ClientOption = { id: string; name: string };
 type ProfileOption = { id: string; full_name?: string | null; email?: string | null };
@@ -176,6 +177,7 @@ export function CalendarWorkspace({
   const [activeRect, setActiveRect] = useState<ActiveRect>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const { pushToast } = useToast();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
@@ -217,6 +219,14 @@ export function CalendarWorkspace({
     return () => window.removeEventListener("salesly:event-optimistic-create", onOptimisticCreate);
   }, [clients, days]);
 
+  function openItem(item: CalendarItem) {
+    if (item.kind === "study" && item.subject_id) {
+      router.push(`/private/study/${item.subject_id}/classes/${item.id}`);
+      return;
+    }
+    setSelectedKey(`${item.kind}:${item.id}`);
+  }
+
   const selected = items.find(item => `${item.kind}:${item.id}` === selectedKey) || null;
   const active = items.find(item => `${item.kind}:${item.id}` === activeKey) || null;
   const grouped = useMemo(() => {
@@ -242,9 +252,11 @@ export function CalendarWorkspace({
       try {
         if (kind === "task") await rescheduleTask(id,targetDate);
         else await rescheduleEvent(id,targetDate,item.start_time,item.end_time);
+        pushToast({ title: kind === "task" ? "Termin zadania zmieniony" : "Wydarzenie przeniesione", tone: "success" });
         router.refresh();
-      } catch {
+      } catch (error) {
         setItems(previous);
+        pushToast({ title: "Nie udało się przenieść pozycji", description: error instanceof Error ? error.message : "Spróbuj ponownie.", tone: "error", duration: 6500 });
       }
     });
   }
@@ -269,8 +281,15 @@ export function CalendarWorkspace({
       setItems(current => current.map(item => item.kind === "event" && item.id === selected.id ? next : item));
       setSelectedKey(null);
       startTransition(async () => {
-        try { await updateEvent(selected.id,formData); router.refresh(); }
-        catch { setItems(previous); }
+        try {
+          await updateEvent(selected.id,formData);
+          pushToast({ title: "Wydarzenie zaktualizowane", tone: "success" });
+          router.refresh();
+        }
+        catch (error) {
+          setItems(previous);
+          pushToast({ title: "Nie udało się zapisać wydarzenia", description: error instanceof Error ? error.message : "Spróbuj ponownie.", tone: "error", duration: 6500 });
+        }
       });
       return;
     }
@@ -295,8 +314,15 @@ export function CalendarWorkspace({
     );
     setSelectedKey(null);
     startTransition(async () => {
-      try { await updateTask(selected.id,formData); router.refresh(); }
-      catch { setItems(previous); }
+      try {
+        await updateTask(selected.id,formData);
+        pushToast({ title: "Zadanie zaktualizowane", tone: "success" });
+        router.refresh();
+      }
+      catch (error) {
+        setItems(previous);
+        pushToast({ title: "Nie udało się zapisać zadania", description: error instanceof Error ? error.message : "Spróbuj ponownie.", tone: "error", duration: 6500 });
+      }
     });
   }
 
@@ -312,10 +338,11 @@ export function CalendarWorkspace({
       try {
         if (selected.kind === "task") await deleteTask(selected.id);
         else await deleteEvent(selected.id);
+        pushToast({ title: selected.kind === "task" ? "Zadanie usunięte" : "Wydarzenie usunięte", tone: "success" });
         router.refresh();
-      } catch {
+      } catch (error) {
         setItems(previous);
-        window.alert(`Nie udało się usunąć ${label}.`);
+        pushToast({ title: `Nie udało się usunąć ${label}`, description: error instanceof Error ? error.message : "Spróbuj ponownie.", tone: "error", duration: 6500 });
       }
     });
   }
@@ -373,7 +400,7 @@ export function CalendarWorkspace({
                 {list.length > 0 && <span className="text-[10px] font-semibold text-[#9aa5ae]">{list.length}</span>}
               </div>
               <div className="space-y-1.5">
-                {list.slice(0,4).map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} compact onOpen={() => setSelectedKey(`${item.kind}:${item.id}`)}/>)}
+                {list.slice(0,4).map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} compact onOpen={() => openItem(item)}/>)}
                 {list.length > 4 && <div className="px-1 text-[11px] font-semibold text-[#7e8c97]">+{list.length-4} więcej</div>}
               </div>
             </DroppableDay>;
@@ -393,7 +420,7 @@ export function CalendarWorkspace({
               <div className="mt-0.5 text-sm font-bold text-[#33434e]">{format(day,"d MMM",{locale:pl})}</div>
             </div>
             <div className="space-y-2.5">
-              {list.map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} onOpen={() => setSelectedKey(`${item.kind}:${item.id}`)}/>)}
+              {list.map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} onOpen={() => openItem(item)}/>)}
               {!list.length && <div className="rounded-xl border border-dashed border-[#dfe5eb] px-3 py-7 text-center text-xs text-[#9aa5ae]">Przeciągnij tutaj lub dodaj pozycję</div>}
             </div>
           </DroppableDay>;
