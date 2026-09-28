@@ -15,7 +15,6 @@ import {
 import { createStudyGoogleDoc, deleteStudyNote, importStudyFromGoogle, importStudyIcs } from "@/lib/actions/google-study";
 import { FormDisclosure } from "@/components/form-disclosure";
 import { ActionForm } from "@/components/action-form";
-import { SectionHeader } from "@/components/section-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,23 +107,23 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
   </ActionForm>;
 
 
-  const googleImportForm = <form action={importStudyFromGoogle.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+  const googleImportForm = <ActionForm action={importStudyFromGoogle.bind(null, subjectId)} successMessage="Import z Google Calendar zakończony" className="grid gap-4 md:grid-cols-2">
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><Input name="from" type="date" required defaultValue={today}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><Input name="to" type="date" required defaultValue={importTo}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Fraza z kalendarza</label><Input name="query" defaultValue={subject.name}/></div>
     <div className="md:col-span-2 text-xs leading-5 text-[#81909b]">Importuje wydarzenia godzinowe z głównego Google Calendar. Fraza jest opcjonalna, ale przy osobnym przedmiocie warto ją podać.</div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><CalendarSync size={15}/> Importuj Google Calendar</Button></div>
-  </form>;
+  </ActionForm>;
 
-  const icsImportForm = <form action={importStudyIcs.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
+  const icsImportForm = <ActionForm action={importStudyIcs.bind(null, subjectId)} successMessage="Import ICS zakończony" className="grid gap-4 md:grid-cols-2">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Plik kalendarza</label><Input name="file" type="file" accept=".ics,text/calendar" required/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><Input name="from" type="date" required defaultValue={today}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><Input name="to" type="date" required defaultValue={importTo}/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
     <div className="md:col-span-2 text-xs leading-5 text-[#81909b]">Działa z eksportami .ics, m.in. Apple Calendar. Obsługiwane są również typowe cykle tygodniowe.</div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><Upload size={15}/> Importuj ICS</Button></div>
-  </form>;
+  </ActionForm>;
 
   const subjectNoteForm = <ActionForm action={createStudyGoogleDoc.bind(null, subjectId, null)} successMessage="Notatka Google Docs utworzona" resetOnSuccess className="grid gap-4">
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa dokumentu</label><Input name="title" placeholder={`${subject.name} — notatki`}/></div>
@@ -196,10 +195,10 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#81909b]"><span>{fmtDateTime(item.starts_at)}{item.ends_at ? ` – ${timeInWarsaw(item.ends_at)}` : ""}</span>{item.room && <span className="inline-flex items-center gap-1"><MapPin size={12}/>{item.room}</span>}{item.lecturer && <span className="inline-flex items-center gap-1"><UserRound size={12}/>{item.lecturer}</span>}</div>
                   </Link>
                   <div className="flex flex-wrap gap-1.5">
-                    <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant={item.attendance_status === "present" ? "primary" : "soft"}><Check size={14}/> Obecny</Button></form>
-                    <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant={item.attendance_status === "absent" ? "danger" : "secondary"}><X size={14}/> Nieobecny</Button></form>
-                    <form action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")}><Button size="sm" variant="ghost"><CircleSlash2 size={14}/> Odwołane</Button></form>
-                    {googleIntegration ? <form action={createStudyGoogleDoc.bind(null, subjectId, item.id)}><Button size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></form> : null}<form action={deleteStudyClass.bind(null, item.id, subjectId)}><Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></form>
+                    <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "present")} successMessage="Obecność zaznaczona"><Button type="submit" size="sm" variant={item.attendance_status === "present" ? "primary" : "soft"}><Check size={14}/> Obecny</Button></ActionForm>
+                    <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "absent")} successMessage="Nieobecność zaznaczona"><Button type="submit" size="sm" variant={item.attendance_status === "absent" ? "danger" : "secondary"}><X size={14}/> Nieobecny</Button></ActionForm>
+                    <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")} successMessage="Zajęcia oznaczone jako odwołane"><Button type="submit" size="sm" variant="ghost"><CircleSlash2 size={14}/> Odwołane</Button></ActionForm>
+                    {googleIntegration ? <ActionForm action={createStudyGoogleDoc.bind(null, subjectId, item.id)} successMessage="Notatka Google Docs utworzona"><Button type="submit" size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></ActionForm> : null}<ActionForm action={deleteStudyClass.bind(null, item.id, subjectId)} successMessage="Zajęcia usunięte"><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></ActionForm>
                   </div>
                 </div>
               </div>)}
@@ -213,10 +212,10 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
               {past.slice(0, 20).map((item: any) => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-[#edf1f5] px-3 py-3 md:flex-row md:items-center md:justify-between">
                 <Link href={`/private/study/${subjectId}/classes/${item.id}`} className="min-w-0 flex-1 rounded-lg px-1 py-0.5 transition hover:bg-[#f7f9fc]"><div className="flex items-center gap-2 text-sm font-semibold text-[#40515d]">{item.title || classTypeLabel(item.class_type)} {attendanceBadge(item.attendance_status)}</div><div className="mt-1 text-xs text-[#8996a0]">{fmtDateTime(item.starts_at)}</div></Link>
                 <div className="flex gap-1.5">
-                  <form action={setStudyAttendance.bind(null, item.id, subjectId, "present")}><Button size="sm" variant="soft">Obecny</Button></form>
-                  <form action={setStudyAttendance.bind(null, item.id, subjectId, "absent")}><Button size="sm" variant="secondary">Nieobecny</Button></form>
-                  <form action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")}><Button size="sm" variant="ghost">Odwołane</Button></form>
-                  {googleIntegration ? <form action={createStudyGoogleDoc.bind(null, subjectId, item.id)}><Button size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></form> : null}
+                  <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "present")} successMessage="Obecność zaznaczona"><Button type="submit" size="sm" variant="soft">Obecny</Button></ActionForm>
+                  <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "absent")} successMessage="Nieobecność zaznaczona"><Button type="submit" size="sm" variant="secondary">Nieobecny</Button></ActionForm>
+                  <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")} successMessage="Zajęcia oznaczone jako odwołane"><Button type="submit" size="sm" variant="ghost">Odwołane</Button></ActionForm>
+                  {googleIntegration ? <ActionForm action={createStudyGoogleDoc.bind(null, subjectId, item.id)} successMessage="Notatka Google Docs utworzona"><Button type="submit" size="sm" variant="ghost"><FileText size={14}/> Notatka</Button></ActionForm> : null}
                 </div>
               </div>)}
             </div>
@@ -245,7 +244,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
           <CardContent className="space-y-2">
             {(notes || []).map((note: any) => <div key={note.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3">
               <a href={note.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 group"><div className="truncate text-sm font-semibold text-[#40515d] group-hover:text-[#3e6fd4]">{note.title}</div><div className="mt-0.5 text-xs text-[#8996a0]">{note.class_id ? "Notatka z zajęć" : "Notatka przedmiotu"}</div></a>
-              <div className="flex items-center gap-1"><a href={note.url} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-xl text-[#60717e] transition hover:bg-[#edf2f7]"><ExternalLink size={15}/></a><form action={deleteStudyNote.bind(null, note.id, subjectId)}><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń link</Button></form></div>
+              <div className="flex items-center gap-1"><a href={note.url} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-xl text-[#60717e] transition hover:bg-[#edf2f7]"><ExternalLink size={15}/></a><ActionForm action={deleteStudyNote.bind(null, note.id, subjectId)} successMessage="Link do notatki usunięty"><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń link</Button></ActionForm></div>
             </div>)}
             {!(notes || []).length && <EmptyState title="Brak notatek" description={googleIntegration ? "Utwórz dokument dla całego przedmiotu albo bezpośrednio przy konkretnych zajęciach." : "Podłącz Google w Ustawieniach, aby tworzyć dokumenty jednym kliknięciem."}/>}
           </CardContent>
@@ -259,7 +258,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
           <CardContent className="space-y-2">
             {(grades || []).map((grade: any) => <div key={grade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3">
               <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><div className="truncate text-sm font-semibold text-[#40515d]">{grade.label}</div>{grade.class_id && <Badge variant="blue">z konkretnych zajęć</Badge>}</div><div className="mt-0.5 text-xs text-[#8996a0]">{grade.graded_at ? fmtDate(grade.graded_at) : "bez daty"} · waga {Number(grade.weight || 0)}%</div></div>
-              <div className="flex items-center gap-2"><div className="rounded-xl bg-[#edf3ff] px-3 py-1.5 text-sm font-bold text-[#416fc9]">{Number(grade.grade)}</div><form action={deleteStudyGrade.bind(null, grade.id, subjectId)}><Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></form></div>
+              <div className="flex items-center gap-2"><div className="rounded-xl bg-[#edf3ff] px-3 py-1.5 text-sm font-bold text-[#416fc9]">{Number(grade.grade)}</div><ActionForm action={deleteStudyGrade.bind(null, grade.id, subjectId)} successMessage="Ocena usunięta"><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></ActionForm></div>
             </div>)}
             {!(grades || []).length && <EmptyState title="Brak ocen" description="Dodaj oceny i wagi, a średnia policzy się automatycznie."/>}
           </CardContent>
