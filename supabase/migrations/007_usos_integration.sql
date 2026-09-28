@@ -72,7 +72,11 @@ using (public.is_active_app_user() and user_id = auth.uid());
 
 
 -- Refresh the summary view so newly added source/external columns are exposed.
-create or replace view public.study_subject_summary
+-- DROP is required because study_subjects gained columns and SELECT s.* changes
+-- the view column order; CREATE OR REPLACE cannot rename/reorder existing columns.
+drop view if exists public.study_subject_summary;
+
+create view public.study_subject_summary
 with (security_invoker = true)
 as
 select
