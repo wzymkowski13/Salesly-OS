@@ -115,48 +115,104 @@ function syncWindow(data: any, selectedTerms: Set<string>) {
   return { start, end };
 }
 
-async function fetchTimetable(
+async function fetchTimetableFromGroups(
+  provider: UsosProvider,
+  token: string,
+  tokenSecret: string,
+  groups: Array<any & { _termId: string }>
+) {
+  const fields = [
+    "type", "start_time", "end_time", "name",
+    "course_id", "course_name", "classtype_name",
+    "group_number", "building_name", "room_number",
+    "unit_id", "cgwm_id", "frequency", "sm_id",
+  ].join("|");
+
+  const identities = new Map<string, { unitId: string; groupNumber: string }>();
+  for (const group of groups) {
+    const unitId = String(group.course_unit_id || "");
+    const groupNumber = String(group.group_number ?? "");
+    if (!unitId || !groupNumber) continue;
+    identities.set(`${unitId}|${groupNumber}`, { unitId, groupNumber });
+  }
+
+  const all: any[] = [];
+  const uniqueGroups = [...identities.values()];
+
+  // classgroup_dates2 has no seven-day workspan limit and is substantially more
+  // reliable on installations where tt/student occasionally returns HTTP 500.
+  for (let i = 0; i < uniqueGroups.length; i += 4) {
+    const batch = uniqueGroups.slice(i, i + 4);
+    const results = await Promise.allSettled(batch.map(async group => {
+      const page = await usosGetJson<any[]>(
+        provider,
+        "/services/tt/classgroup_dates2",
+        token,
+        tokenSecret,
+        {
+          unit_id: group.unitId,
+          group_number: group.groupNumber,
+          fields,
+        }
+      );
+      return { group, page };
+    }));
+
+    for (const result of results) {
+      if (result.status !== "fulfilled" || !Array.isArray(result.value.page)) continue;
+      for (const item of result.value.page) {
+        // Older USOS installations may omit these identifiers even though
+        // they are known from the class-group request.
+        all.push({
+          ...item,
+          unit_id: item?.unit_id ?? result.value.group.unitId,
+          group_number: item?.group_number ?? result.value.group.groupNumber,
+        });
+      }
+    }
+  }
+
+  const unique = new Map<string, any>();
+  for (const item of all) {
+    if (!item?.start_time) continue;
+    unique.set(activityExternalId(provider, item), item);
+  }
+  return [...unique.values()];
+}
+
+async function fetchExamActivitiesBestEffort(
   provider: UsosProvider,
   token: string,
   tokenSecret: string,
   start: Date,
   end: Date
 ) {
-  const chunkStarts: Date[] = [];
-  let cursor = new Date(start);
-  while (cursor <= end) {
-    chunkStarts.push(new Date(cursor));
-    cursor = addDays(cursor, 7);
-  }
-
-  const fields = [
-    "type", "start_time", "end_time", "name", "url",
-    "course_id", "course_name", "classtype_name", "lecturer_ids",
-    "group_number", "building_name", "building_id", "room_number", "room_id",
-    "unit_id", "classtype_id", "cgwm_id", "frequency", "sm_id", "slot_number",
-  ].join("|");
-
   const results: any[] = [];
-  for (let i = 0; i < chunkStarts.length; i += 4) {
-    const batch = chunkStarts.slice(i, i + 4);
-    const pages = await Promise.all(batch.map(async chunkStart => {
-      const remaining = Math.floor((end.getTime() - chunkStart.getTime()) / 86_400_000) + 1;
-      const days = Math.max(1, Math.min(7, remaining));
-      return usosGetJson<any[]>(
+  let cursor = new Date(start);
+
+  // Exams are supplementary. A broken tt/student must never block the class
+  // timetable, so every weekly request is best-effort.
+  while (cursor <= end) {
+    const remaining = Math.floor((end.getTime() - cursor.getTime()) / 86_400_000) + 1;
+    const days = Math.max(1, Math.min(7, remaining));
+    try {
+      const page = await usosGetJson<any[]>(
         provider,
         "/services/tt/student",
         token,
         tokenSecret,
         {
-          start: format(chunkStart, "yyyy-MM-dd"),
+          start: format(cursor, "yyyy-MM-dd"),
           days,
-          fields,
+          fields: "type|start_time|end_time|name|course_id|course_name|group_number|building_name|room_number",
         }
       );
-    }));
-    pages.forEach(page => {
-      if (Array.isArray(page)) results.push(...page);
-    });
+      if (Array.isArray(page)) results.push(...page.filter(item => item?.type === "exam"));
+    } catch {
+      // UJD currently sometimes returns HTTP 500 from tt/student.
+      // Classes still sync from classgroup_dates2.
+    }
+    cursor = addDays(cursor, 7);
   }
 
   const unique = new Map<string, any>();
@@ -324,13 +380,20 @@ export async function syncUsosForUser(userId: string) {
     }
 
     const { start, end } = syncWindow(groupsData, selectedTerms);
-    const activities = await fetchTimetable(
+    const classActivities = await fetchTimetableFromGroups(
+      provider,
+      connection.access_token,
+      connection.access_token_secret,
+      rawGroups
+    );
+    const examActivities = await fetchExamActivitiesBestEffort(
       provider,
       connection.access_token,
       connection.access_token_secret,
       start,
       end
     );
+    const activities = [...classActivities, ...examActivities];
 
     const { data: existingClasses, error: classesReadError } = await admin
       .from("study_classes")
