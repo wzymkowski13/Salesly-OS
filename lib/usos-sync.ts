@@ -84,7 +84,7 @@ function termDate(term: any, key: "start_date" | "end_date") {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseISO(value) : null;
 }
 
-function relevantTermIds(data: any) {
+function relevantTermIds(data: any): Set<string> {
   const terms = Array.isArray(data?.terms) ? data.terms : [];
   const now = new Date();
   const low = subDays(now, 45);
@@ -95,8 +95,8 @@ function relevantTermIds(data: any) {
     if (!start || !end) return false;
     return !isBefore(end, low) && !isAfter(start, high);
   });
-  if (matching.length) return new Set(matching.map((term: any) => String(term.id)));
-  return new Set(terms.slice(0, 2).map((term: any) => String(term.id)));
+  if (matching.length) return new Set<string>(matching.map((term: any) => String(term.id)));
+  return new Set<string>(terms.slice(0, 2).map((term: any) => String(term.id)));
 }
 
 function syncWindow(data: any, selectedTerms: Set<string>) {
