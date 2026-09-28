@@ -269,9 +269,9 @@ Miesiąc / kwartał / rok:
 - [x] ECTS
 - [x] oceny / wagi / średnia ważona
 - [x] zaliczenia
-- [ ] import planu z Google Calendar
-- [ ] import ICS
-- [ ] notatki Google Docs / Drive
+- [x] import planu z Google Calendar
+- [x] import ICS
+- [x] notatki Google Docs / Drive
 
 ### Etap C — Integracje studiów
 - Google Calendar
