@@ -51,7 +51,7 @@ function timeInWarsaw(value?: string | null) {
 }
 
 function classTypeLabel(value: string) {
-  return value === "lecture" ? "Wykład" : value === "exercise" ? "Ćwiczenia" : value === "lab" ? "Laboratorium" : value === "seminar" ? "Seminarium" : "Inne";
+  return value === "lecture" ? "Wykład" : value === "exercise" ? "Ćwiczenia" : value === "lab" ? "Laboratorium" : value === "seminar" ? "Seminarium" : value === "workshop" ? "Warsztaty" : "Inne";
 }
 
 function attendanceBadge(status: string) {
@@ -96,7 +96,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
 
   const addClassForm = <form action={createStudyClass.bind(null, subjectId)} className="grid gap-4 md:grid-cols-2">
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required/></div>
-    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="other">Inne</option></Select></div>
+    <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ zajęć</label><Select name="class_type" defaultValue="lecture"><option value="lecture">Wykład</option><option value="exercise">Ćwiczenia</option><option value="lab">Laboratorium</option><option value="seminar">Seminarium</option><option value="workshop">Warsztaty</option><option value="other">Inne</option></Select></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><TimePicker name="start_time" defaultValue="09:00" required/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><TimePicker name="end_time" optional/></div>
     <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Sala</label><Input name="room"/></div>
