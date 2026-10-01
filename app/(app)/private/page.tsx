@@ -47,7 +47,7 @@ export default async function PrivateDashboardPage() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-violet-50 p-2 text-violet-600"><CalendarDays size={18}/></div>
-          <div><h2 className="font-bold text-[#2a3944]">Dzisiaj na studiach</h2><div className="text-xs text-[#83909b]">${todayClasses?.length || 0} bloków zajęć</div></div>
+          <div><h2 className="font-bold text-[#2a3944]">Dzisiaj na studiach</h2><div className="text-xs text-[#83909b]">{todayClasses?.length || 0} bloków zajęć</div></div>
         </div>
         <Link href={`/private/calendar?view=day&date=${today}`} className="text-sm font-semibold text-[#5f79ad]">Kalendarz <ArrowRight size={15} className="inline"/></Link>
       </CardHeader>
