@@ -99,3 +99,81 @@ export async function deleteFinanceTransaction(transactionId: string) {
   revalidateFinance();
   return { ok: true, message: "Transakcja usunięta" };
 }
+
+
+export async function createFinanceSource(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const name = textValue(formData, "name");
+  if (!name) throw new Error("Nazwa źródła jest wymagana.");
+
+  const { error } = await supabase.from("finance_sources").insert({
+    user_id: user.id,
+    name,
+    active: true,
+  });
+
+  if (error) {
+    if (String(error.code) === "23505") throw new Error("Takie źródło przychodu już istnieje.");
+    throw new Error(error.message);
+  }
+
+  revalidateFinance();
+  return { ok: true, message: "Źródło przychodu dodane" };
+}
+
+export async function createFinanceCategory(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const name = textValue(formData, "name");
+  const transactionType = textValue(formData, "transaction_type");
+  const scopeRaw = textValue(formData, "scope");
+
+  if (!name) throw new Error("Nazwa kategorii jest wymagana.");
+  if (!["income", "expense"].includes(transactionType)) throw new Error("Nieprawidłowy typ kategorii.");
+  if (scopeRaw && !["business", "private"].includes(scopeRaw)) throw new Error("Nieprawidłowy obszar kategorii.");
+
+  const { error } = await supabase.from("finance_categories").insert({
+    user_id: user.id,
+    name,
+    transaction_type: transactionType,
+    scope: scopeRaw || null,
+    active: true,
+  });
+
+  if (error) {
+    if (String(error.code) === "23505") throw new Error("Taka kategoria już istnieje.");
+    throw new Error(error.message);
+  }
+
+  revalidateFinance();
+  return { ok: true, message: "Kategoria dodana" };
+}
+
+export async function archiveFinanceSource(sourceId: string) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("finance_sources")
+    .update({ active: false })
+    .eq("id", sourceId)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return { ok: true, message: "Źródło ukryte" };
+}
+
+export async function archiveFinanceCategory(categoryId: string) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("finance_categories")
+    .update({ active: false })
+    .eq("id", categoryId)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return { ok: true, message: "Kategoria ukryta" };
+}
