@@ -168,7 +168,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
 
 
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
         <div className="flex items-center gap-3"><div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><CalendarSync size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Import planu</h2><div className="text-xs text-[#83909b]">Google Calendar albo plik .ics</div></div></div>
         <div className="flex flex-wrap gap-2">
           {googleIntegration ? <FormDisclosure label="Google Calendar" compact align="right">{googleImportForm}</FormDisclosure> : <Link href="/settings" className="inline-flex h-9 items-center rounded-xl border border-[#dbe3ec] bg-white px-3 text-sm font-semibold text-[#536674] transition hover:bg-[#f8fafc]">Podłącz Google</Link>}
@@ -180,7 +180,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
 
     <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
           <div><h2 className="font-bold text-[#2a3944]">Plan zajęć</h2><div className="text-xs text-[#83909b]">obecność liczona automatycznie per przedmiot</div></div>
           <FormDisclosure label="Dodaj zajęcia" compact variant="secondary" align="right">{addClassForm}</FormDisclosure>
         </CardHeader>
@@ -194,7 +194,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
                     <div className="flex flex-wrap items-center gap-2"><div className="font-bold text-[#32424d]">{item.title || classTypeLabel(item.class_type)}</div>{attendanceBadge(item.attendance_status)}<Badge variant="blue">Otwórz kartę</Badge></div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#81909b]"><span>{fmtDateTime(item.starts_at)}{item.ends_at ? ` – ${timeInWarsaw(item.ends_at)}` : ""}</span>{item.room && <span className="inline-flex items-center gap-1"><MapPin size={12}/>{item.room}</span>}{item.lecturer && <span className="inline-flex items-center gap-1"><UserRound size={12}/>{item.lecturer}</span>}</div>
                   </Link>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
                     <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "present")} successMessage="Obecność zaznaczona"><Button type="submit" size="sm" variant={item.attendance_status === "present" ? "primary" : "soft"}><Check size={14}/> Obecny</Button></ActionForm>
                     <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "absent")} successMessage="Nieobecność zaznaczona"><Button type="submit" size="sm" variant={item.attendance_status === "absent" ? "danger" : "secondary"}><X size={14}/> Nieobecny</Button></ActionForm>
                     <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")} successMessage="Zajęcia oznaczone jako odwołane"><Button type="submit" size="sm" variant="ghost"><CircleSlash2 size={14}/> Odwołane</Button></ActionForm>
@@ -211,7 +211,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
             <div className="space-y-2">
               {past.slice(0, 20).map((item: any) => <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-[#edf1f5] px-3 py-3 md:flex-row md:items-center md:justify-between">
                 <Link href={`/private/study/${subjectId}/classes/${item.id}`} className="min-w-0 flex-1 rounded-lg px-1 py-0.5 transition hover:bg-[#f7f9fc]"><div className="flex items-center gap-2 text-sm font-semibold text-[#40515d]">{item.title || classTypeLabel(item.class_type)} {attendanceBadge(item.attendance_status)}</div><div className="mt-1 text-xs text-[#8996a0]">{fmtDateTime(item.starts_at)}</div></Link>
-                <div className="flex gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
                   <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "present")} successMessage="Obecność zaznaczona"><Button type="submit" size="sm" variant="soft">Obecny</Button></ActionForm>
                   <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "absent")} successMessage="Nieobecność zaznaczona"><Button type="submit" size="sm" variant="secondary">Nieobecny</Button></ActionForm>
                   <ActionForm action={setStudyAttendance.bind(null, item.id, subjectId, "cancelled")} successMessage="Zajęcia oznaczone jako odwołane"><Button type="submit" size="sm" variant="ghost">Odwołane</Button></ActionForm>
@@ -237,7 +237,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
 
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
             <div><h2 className="font-bold text-[#2a3944]">Notatki</h2><div className="text-xs text-[#83909b]">Google Docs przypięte do przedmiotu i zajęć</div></div>
             {googleIntegration ? <FormDisclosure label="Nowa notatka" compact align="right">{subjectNoteForm}</FormDisclosure> : <Link href="/settings" className="text-sm font-semibold text-[#5f79ad]">Podłącz Google</Link>}
           </CardHeader>
@@ -251,7 +251,7 @@ export default async function StudySubjectPage({ params }: { params: Promise<{ s
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
             <div><h2 className="font-bold text-[#2a3944]">Oceny cząstkowe</h2><div className="text-xs text-[#83909b]">średnia liczona według wag</div></div>
             <FormDisclosure label="Dodaj ocenę" compact align="right">{addGradeForm}</FormDisclosure>
           </CardHeader>
