@@ -14,8 +14,13 @@ function revalidateStudy() {
 
 export async function syncUsosNow() {
   const user = await requireUser();
-  await syncUsosForUser(user.id);
+  const summary = await syncUsosForUser(user.id);
   revalidateStudy();
+  return {
+    ok: true,
+    message: "Synchronizacja USOS zakończona",
+    description: `${summary.classes} zajęć · +${summary.classes_created} nowych · ${summary.classes_updated} zaktualizowanych · ${summary.classes_cancelled} odwołanych`,
+  };
 }
 
 export async function disconnectUsos() {
