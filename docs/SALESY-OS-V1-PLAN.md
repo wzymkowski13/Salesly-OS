@@ -324,3 +324,18 @@ Foundation jest gotowy, gdy:
 - [x] study_classes bezpośrednio w kalendarzu Prywatne
 - [x] synchronizacja po podłączeniu + ręczne „Synchronizuj teraz”
 - [x] dzienny Vercel Cron (po ustawieniu CRON_SECRET)
+
+
+### Etap C3 — Studia v1.0 polish
+- [x] karta pojedynczych zajęć jako osobny byt
+- [x] oceny przypięte do konkretnego bloku zajęć
+- [x] notatki i frekwencja per zajęcia
+- [x] klik z kalendarza bezpośrednio do karty zajęć
+- [x] globalne toasty sukces/błąd dla akcji
+- [x] interaktywne „+X więcej” w widoku miesięcznym kalendarza
+- [x] deduplikacja legacy rekordów USOS
+- [x] dashboard „Dzisiaj na studiach”
+- [x] historia synchronizacji USOS
+- [x] filtrowanie najbliższych zajęć po typie
+- [ ] test PCz na prawdziwym koncie
+- [ ] przegląd mobile modułu Studia
