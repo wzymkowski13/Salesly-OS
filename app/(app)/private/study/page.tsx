@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpenCheck, CalendarClock, CheckCircle2, GraduationCap, Link2, Plus, RefreshCw, School, Trophy, Unlink } from "lucide-react";
+import { BookOpenCheck, CalendarClock, CheckCircle2, GraduationCap, History, Link2, Plus, RefreshCw, School, Trophy, Unlink } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createStudySubject } from "@/lib/actions/study";
@@ -50,17 +50,31 @@ function lastSyncLabel(value?: string | null) {
   }).format(new Date(value));
 }
 
-export default async function StudyPage({ searchParams }: { searchParams: Promise<{ usos?: string; provider?: string }> }) {
+export default async function StudyPage({ searchParams }: { searchParams: Promise<{ usos?: string; provider?: string; type?: string }> }) {
   const user = await requireUser();
   const params = await searchParams;
   const supabase = await createClient();
   const now = new Date().toISOString();
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
-  const [{ data: subjects }, { data: upcoming }, { data: exams }, usosConnection] = await Promise.all([
+  const allowedTypes = new Set(["lecture","exercise","lab","seminar","workshop","other"]);
+  const selectedType = allowedTypes.has(params.type || "") ? params.type! : "all";
+
+  let upcomingQuery = supabase
+    .from("study_classes")
+    .select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,source,study_subjects(name)")
+    .eq("user_id", user.id)
+    .gte("starts_at", now)
+    .neq("attendance_status", "cancelled")
+    .order("starts_at")
+    .limit(20);
+  if (selectedType !== "all") upcomingQuery = upcomingQuery.eq("class_type", selectedType);
+
+  const [{ data: subjects }, { data: upcoming }, { data: exams }, { data: syncRuns }, usosConnection] = await Promise.all([
     supabase.from("study_subject_summary").select("*").eq("user_id", user.id).is("archived_at", null).order("name"),
-    supabase.from("study_classes").select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,source,study_subjects(name)").eq("user_id", user.id).gte("starts_at", now).order("starts_at").limit(8),
+    upcomingQuery,
     supabase.from("study_subjects").select("id,name,pass_type,pass_date").eq("user_id", user.id).is("archived_at", null).gte("pass_date", today).order("pass_date").limit(8),
+    supabase.from("usos_sync_runs").select("id,provider,status,subjects_count,classes_count,updated_count,cancelled_count,error_message,started_at,finished_at").eq("user_id", user.id).order("started_at", { ascending: false }).limit(5),
     getUsosConnection(user.id).catch(() => null),
   ]);
 
@@ -71,6 +85,14 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
   const absent = activeSubjects.reduce((sum: number, subject: any) => sum + Number(subject.absent_count || 0), 0);
   const attendance = present + absent > 0 ? Math.round((present / (present + absent)) * 1000) / 10 : null;
   const syncSummary = usosConnection?.last_sync_summary || null;
+  const typeFilters = [
+    ["all", "Wszystkie"],
+    ["lecture", "Wykłady"],
+    ["exercise", "Ćwiczenia"],
+    ["workshop", "Warsztaty"],
+    ["lab", "Laboratoria"],
+    ["seminar", "Seminaria"],
+  ];
 
   const addSubjectForm = <form action={createStudySubject} className="grid gap-4 md:grid-cols-2">
     <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przedmiot</label><Input name="name" required placeholder="Np. Ekonometria"/></div>
@@ -154,6 +176,33 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
       </CardContent>
     </Card>
 
+    {usosConnection && <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-[#f4f7fa] p-2.5 text-[#627482]"><History size={18}/></div>
+          <div><h2 className="font-bold text-[#2a3944]">Historia synchronizacji</h2><div className="text-xs text-[#83909b]">ostatnie próby pobrania planu z USOS</div></div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {(syncRuns || []).map((run:any) => <div key={run.id} className="flex flex-col gap-2 rounded-xl border border-[#edf1f5] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={run.status === "success" ? "green" : run.status === "error" ? "red" : "amber"}>{run.status === "success" ? "Sukces" : run.status === "error" ? "Błąd" : "W trakcie"}</Badge>
+              <span className="text-sm font-semibold text-[#40515d]">{lastSyncLabel(run.finished_at || run.started_at)}</span>
+            </div>
+            {run.status === "error" && run.error_message && <div className="mt-1 max-w-3xl truncate text-xs text-red-600">{run.error_message}</div>}
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-[#6f7f8b]">
+            <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.subjects_count || 0} przedm.</span>
+            <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.classes_count || 0} zajęć</span>
+            {Number(run.updated_count || 0) > 0 && <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-700">{run.updated_count} aktualizacji</span>}
+            {Number(run.cancelled_count || 0) > 0 && <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">{run.cancelled_count} odwołanych</span>}
+          </div>
+        </div>)}
+        {!(syncRuns || []).length && <EmptyState title="Brak historii" description="Pierwsza synchronizacja pojawi się tutaj po uruchomieniu."/>}
+      </CardContent>
+    </Card>}
+
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Przedmioty" value={activeSubjects.length} hint="aktywnych" icon={BookOpenCheck} tone="blue"/>
       <StatCard label="ECTS" value={totalEcts} hint="w aktywnych przedmiotach" icon={GraduationCap} tone="slate"/>
@@ -188,13 +237,20 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
 
       <div className="space-y-5">
         <Card>
-          <CardHeader><div><h2 className="font-bold text-[#2a3944]">Najbliższe zajęcia</h2><div className="text-xs text-[#83909b]">kolejne pozycje planu</div></div></CardHeader>
-          <CardContent className="space-y-2">
-            {(upcoming || []).map((item: any) => <Link key={item.id} href={`/private/study/${item.subject_id}`} className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]">
+          <CardHeader className="items-start">
+            <div><h2 className="font-bold text-[#2a3944]">Najbliższe zajęcia</h2><div className="text-xs text-[#83909b]">kolejne pozycje planu</div></div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {typeFilters.map(([value,label]) => <Link key={value} href={value === "all" ? "/private/study" : `/private/study?type=${value}`} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${selectedType === value ? "bg-[#568deb] text-white" : "bg-[#f2f5f8] text-[#667884] hover:bg-[#e9eef4]"}`}>{label}</Link>)}
+            </div>
+            <div className="space-y-2">
+            {(upcoming || []).map((item: any) => <Link key={item.id} href={`/private/study/${item.subject_id}/classes/${item.id}`} className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]">
               <div className="min-w-[76px] rounded-xl bg-violet-50 px-2 py-2 text-center text-xs font-bold text-violet-700">{fmtDateTime(item.starts_at)}</div>
               <div className="min-w-0"><div className="truncate text-sm font-semibold text-[#34434e]">{item.study_subjects?.name || item.title || "Zajęcia"}</div><div className="mt-0.5 text-xs text-[#84919c]">{classTypeLabel(item.class_type)}{item.room ? ` · sala ${item.room}` : ""}{item.building ? ` · ${item.building}` : ""}</div></div>
             </Link>)}
-            {!(upcoming || []).length && <EmptyState title="Brak zajęć" description={usosConnection ? "Uruchom synchronizację planu." : "Połącz USOS lub dodaj zajęcia ręcznie."}/>}
+            {!(upcoming || []).length && <EmptyState title="Brak zajęć" description={usosConnection ? "Brak zajęć dla wybranego filtra." : "Połącz USOS lub dodaj zajęcia ręcznie."}/>}
+            </div>
           </CardContent>
         </Card>
 
