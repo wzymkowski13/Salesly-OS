@@ -118,7 +118,7 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
     {["connect_error","callback_error","invalid_provider"].includes(params.usos || "") && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">Nie udało się dokończyć połączenia z USOS. Spróbuj ponownie.</div>}
 
     <Card className={usosConnection ? "border-emerald-200" : ""}>
-      <CardHeader>
+      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-violet-50 p-2.5 text-violet-600"><School size={19}/></div>
           <div>
@@ -177,7 +177,7 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
     </Card>
 
     {usosConnection && <Card>
-      <CardHeader>
+      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-[#f4f7fa] p-2.5 text-[#627482]"><History size={18}/></div>
           <div><h2 className="font-bold text-[#2a3944]">Historia synchronizacji</h2><div className="text-xs text-[#83909b]">ostatnie próby pobrania planu z USOS</div></div>
@@ -241,8 +241,8 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
             <div><h2 className="font-bold text-[#2a3944]">Najbliższe zajęcia</h2><div className="text-xs text-[#83909b]">kolejne pozycje planu</div></div>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {typeFilters.map(([value,label]) => <Link key={value} href={value === "all" ? "/private/study" : `/private/study?type=${value}`} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${selectedType === value ? "bg-[#568deb] text-white" : "bg-[#f2f5f8] text-[#667884] hover:bg-[#e9eef4]"}`}>{label}</Link>)}
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              {typeFilters.map(([value,label]) => <Link key={value} href={value === "all" ? "/private/study" : `/private/study?type=${value}`} className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${selectedType === value ? "bg-[#568deb] text-white" : "bg-[#f2f5f8] text-[#667884] hover:bg-[#e9eef4]"}`}>{label}</Link>)}
             </div>
             <div className="space-y-2">
             {(upcoming || []).map((item: any) => <Link key={item.id} href={`/private/study/${item.subject_id}/classes/${item.id}`} className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition hover:border-[#e5eaf0] hover:bg-[#f7f9fc]">
