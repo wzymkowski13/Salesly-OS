@@ -388,35 +388,80 @@ export function CalendarWorkspace({
       onDragCancel={() => { setActiveKey(null); setActiveRect(null); }}
       onDragEnd={onDragEnd}
     >
-      {view === "month" ? <div className="overflow-x-auto rounded-[20px] border border-[#dfe6ee] bg-white shadow-[0_8px_28px_rgba(30,48,64,.035)] salesly-scrollbar">
-        <div className="min-w-[850px]">
-          <div className="grid grid-cols-7 border-b border-[#e8edf2] bg-[#f7f9fc] text-center text-[11px] font-bold uppercase tracking-[0.11em] text-[#8b98a3]">
-            {["Pon","Wt","Śr","Czw","Pt","Sob","Nd"].map(day => <div key={day} className="p-3">{day}</div>)}
-          </div>
-          <div className="grid grid-cols-7">{days.map(date => {
+      {view === "month" ? <>
+        <div className="space-y-3 sm:hidden">
+          {days.filter(date => {
+            const day = parseISO(date);
+            return isSameMonth(day, focus) && (grouped.get(date) || []).length > 0;
+          }).map(date => {
             const day = parseISO(date);
             const list = grouped.get(date) || [];
             const isToday = date === today;
-            return <DroppableDay key={date} date={date} className={cn(
-              "min-h-[142px] border-b border-r border-[#edf1f5] p-2.5 hover:bg-[#f8fbff]",
-              !isSameMonth(day,focus) ? "bg-[#fafbfd] text-[#a7b1b9]" : isToday ? "bg-[#f7faff]" : "bg-white"
+            return <div key={date} className={cn(
+              "rounded-[18px] border bg-white p-3 shadow-[0_4px_16px_rgba(30,48,64,.03)]",
+              isToday ? "border-[#cbdcff] bg-[#f8fbff] ring-2 ring-[#edf3ff]" : "border-[#dfe6ee]"
             )}>
-              <div className="mb-2 flex items-center justify-between">
-                <div className={cn("flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold", isToday ? "bg-[#568deb] text-white shadow-sm shadow-blue-100" : "text-[#586873]")}>{format(day,"d")}</div>
-                {list.length > 0 && <span className="text-[10px] font-semibold text-[#9aa5ae]">{list.length}</span>}
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8b98a3]">{format(day,"EEEE",{locale:pl})}</div>
+                  <div className="mt-0.5 text-sm font-bold text-[#33434e]">{format(day,"d MMMM",{locale:pl})}</div>
+                </div>
+                <Badge variant={isToday ? "blue" : "neutral"}>{list.length} {list.length === 1 ? "pozycja" : "pozycji"}</Badge>
               </div>
-              <div className="space-y-1.5">
-                {list.slice(0,4).map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} compact onOpen={() => openItem(item)}/>)}
-                {list.length > 4 && <button
+              <div className="space-y-2">
+                {list.map(item => <button
+                  key={`${item.kind}:${item.id}`}
                   type="button"
-                  onClick={() => setExpandedDate(date)}
-                  className="w-full rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold text-[#5f79ad] transition hover:bg-[#edf3ff] hover:text-[#3e6fd4]"
-                >+{list.length-4} więcej</button>}
+                  onClick={() => openItem(item)}
+                  className={cn(
+                    "w-full rounded-xl border border-l-[3px] p-3 text-left transition active:scale-[.99]",
+                    itemStyle(item)
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-bold opacity-75">{item.start_time}{item.end_time ? `–${item.end_time}` : ""}</div>
+                    <Badge className="bg-white/70" variant={item.kind === "task" ? "neutral" : "blue"}>{itemLabel(item)}</Badge>
+                  </div>
+                  <div className="mt-1.5 text-sm font-bold">{item.title}</div>
+                  {item.kind === "study" && (item.room || item.building) && <div className="mt-1 text-xs opacity-75">{[item.room ? `sala ${item.room}` : "", item.building || ""].filter(Boolean).join(" · ")}</div>}
+                  {item.clients?.name && <div className="mt-1 text-xs opacity-75">{item.clients.name}</div>}
+                </button>)}
               </div>
-            </DroppableDay>;
-          })}</div>
+            </div>;
+          })}
+          {!days.some(date => isSameMonth(parseISO(date), focus) && (grouped.get(date) || []).length > 0) && <div className="rounded-[18px] border border-dashed border-[#dfe5eb] bg-white px-4 py-10 text-center text-sm text-[#8a98a3]">Brak pozycji w tym miesiącu.</div>}
         </div>
-      </div> : <div className={cn("grid gap-4", view === "week" ? "lg:grid-cols-7" : "grid-cols-1")}>
+
+        <div className="hidden overflow-x-auto rounded-[20px] border border-[#dfe6ee] bg-white shadow-[0_8px_28px_rgba(30,48,64,.035)] salesly-scrollbar sm:block">
+          <div className="min-w-[850px]">
+            <div className="grid grid-cols-7 border-b border-[#e8edf2] bg-[#f7f9fc] text-center text-[11px] font-bold uppercase tracking-[0.11em] text-[#8b98a3]">
+              {["Pon","Wt","Śr","Czw","Pt","Sob","Nd"].map(day => <div key={day} className="p-3">{day}</div>)}
+            </div>
+            <div className="grid grid-cols-7">{days.map(date => {
+              const day = parseISO(date);
+              const list = grouped.get(date) || [];
+              const isToday = date === today;
+              return <DroppableDay key={date} date={date} className={cn(
+                "min-h-[142px] border-b border-r border-[#edf1f5] p-2.5 hover:bg-[#f8fbff]",
+                !isSameMonth(day,focus) ? "bg-[#fafbfd] text-[#a7b1b9]" : isToday ? "bg-[#f7faff]" : "bg-white"
+              )}>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className={cn("flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold", isToday ? "bg-[#568deb] text-white shadow-sm shadow-blue-100" : "text-[#586873]")}>{format(day,"d")}</div>
+                  {list.length > 0 && <span className="text-[10px] font-semibold text-[#9aa5ae]">{list.length}</span>}
+                </div>
+                <div className="space-y-1.5">
+                  {list.slice(0,4).map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} compact onOpen={() => openItem(item)}/>)}
+                  {list.length > 4 && <button
+                    type="button"
+                    onClick={() => setExpandedDate(date)}
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold text-[#5f79ad] transition hover:bg-[#edf3ff] hover:text-[#3e6fd4]"
+                  >+{list.length-4} więcej</button>}
+                </div>
+              </DroppableDay>;
+            })}</div>
+          </div>
+        </div>
+      </> : <div className={cn("grid gap-4", view === "week" ? "lg:grid-cols-7" : "grid-cols-1")}>
         {days.map(date => {
           const day = parseISO(date);
           const list = grouped.get(date) || [];
