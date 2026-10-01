@@ -40,7 +40,7 @@ function headerMatch(header: string, variants: string[]) {
   return variants.some(variant => normalized === normalize(variant) || normalized.includes(normalize(variant)));
 }
 
-function stringifyCell(value: MatrixCell) {
+function stringifyCell(value: unknown) {
   if (value instanceof Date) return value.toISOString();
   if (value === null || value === undefined) return "";
   return String(value).trim();
