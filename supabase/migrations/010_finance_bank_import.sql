@@ -8,6 +8,8 @@ create table if not exists public.finance_import_batches (
   row_count integer not null default 0,
   imported_count integer not null default 0,
   skipped_count integer not null default 0,
+  status text not null default 'completed' check (status in ('completed','partial','error')),
+  error_message text,
   created_at timestamptz not null default now()
 );
 
