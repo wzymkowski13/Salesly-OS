@@ -396,7 +396,7 @@ export async function syncUsosForUser(userId: string) {
     // so a windowed lookup could miss an existing row and attempt a duplicate insert.
     const { data: existingClasses, error: classesReadError } = await admin
       .from("study_classes")
-      .select("id,external_event_id,starts_at,attendance_status,notes")
+      .select("id,subject_id,class_type,external_event_id,starts_at,ends_at,attendance_status,notes")
       .eq("user_id", userId)
       .eq("source", `usos:${provider}`);
     if (classesReadError) throw new Error(classesReadError.message);
@@ -462,6 +462,72 @@ export async function syncUsosForUser(userId: string) {
         .from("study_classes")
         .upsert(chunk, { onConflict: "user_id,source,external_event_id" });
       if (error) throw new Error(error.message);
+    }
+
+    // Reconcile legacy USOS rows created with an older external-id scheme.
+    // The physical identity of a class block is subject + class type + start time.
+    // If the same block exists under an old external ID, move user-owned links
+    // (notes/grades) to the canonical row and remove the stale duplicate.
+    const physicalKey = (row: { subject_id?: string | null; class_type?: string | null; starts_at?: string | null }) =>
+      [String(row.subject_id || ""), String(row.class_type || ""), new Date(String(row.starts_at || "")).toISOString()].join("|");
+
+    const incomingByPhysical = new Map<string, any>();
+    for (const row of upsertRows) incomingByPhysical.set(physicalKey(row), row);
+
+    if (incomingByPhysical.size) {
+      const { data: refreshedRows, error: refreshError } = await admin
+        .from("study_classes")
+        .select("id,subject_id,class_type,external_event_id,starts_at,attendance_status,notes,source")
+        .eq("user_id", userId)
+        .eq("source", `usos:${provider}`);
+      if (refreshError) throw new Error(refreshError.message);
+
+      const canonicalByPhysical = new Map<string, any>();
+      for (const row of refreshedRows || []) {
+        const incoming = incomingByPhysical.get(physicalKey(row));
+        if (incoming && row.external_event_id === incoming.external_event_id) {
+          canonicalByPhysical.set(physicalKey(row), row);
+        }
+      }
+
+      for (const stale of refreshedRows || []) {
+        const key = physicalKey(stale);
+        const canonical = canonicalByPhysical.get(key);
+        if (!canonical || canonical.id === stale.id) continue;
+        if (stale.external_event_id === canonical.external_event_id) continue;
+
+        // Preserve attendance/notes if they only existed on the legacy row.
+        const classPatch: Record<string, any> = {};
+        if (canonical.attendance_status === "unknown" && stale.attendance_status && stale.attendance_status !== "cancelled") {
+          classPatch.attendance_status = stale.attendance_status;
+        }
+        if (!canonical.notes && stale.notes) classPatch.notes = stale.notes;
+        if (Object.keys(classPatch).length) {
+          const { error } = await admin.from("study_classes").update(classPatch).eq("id", canonical.id).eq("user_id", userId);
+          if (error) throw new Error(error.message);
+        }
+
+        const { error: noteMoveError } = await admin
+          .from("study_notes")
+          .update({ class_id: canonical.id })
+          .eq("user_id", userId)
+          .eq("class_id", stale.id);
+        if (noteMoveError) throw new Error(noteMoveError.message);
+
+        const { error: gradeMoveError } = await admin
+          .from("study_grades")
+          .update({ class_id: canonical.id })
+          .eq("user_id", userId)
+          .eq("class_id", stale.id);
+        if (gradeMoveError) throw new Error(gradeMoveError.message);
+
+        const { error: deleteLegacyError } = await admin
+          .from("study_classes")
+          .delete()
+          .eq("id", stale.id)
+          .eq("user_id", userId);
+        if (deleteLegacyError) throw new Error(deleteLegacyError.message);
+      }
     }
 
     const seen = new Set(rowsByExternal.keys());
