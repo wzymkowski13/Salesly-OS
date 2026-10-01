@@ -378,8 +378,9 @@ export async function saveFinanceTaxProfile(formData: FormData) {
   }
 
   const taxRate = nonNegativeNumber(formData, "tax_rate", 0);
+  const healthContributionRate = nonNegativeNumber(formData, "health_contribution_rate", 9);
   const vatRate = nonNegativeNumber(formData, "vat_rate", 23);
-  if (taxRate > 100 || vatRate > 100) throw new Error("Stawka procentowa nie może przekraczać 100%.");
+  if (taxRate > 100 || healthContributionRate > 100 || vatRate > 100) throw new Error("Stawka procentowa nie może przekraczać 100%.");
 
   const { error } = await supabase
     .from("finance_tax_profiles")
@@ -388,7 +389,7 @@ export async function saveFinanceTaxProfile(formData: FormData) {
       tax_method: taxMethod,
       tax_rate: taxRate,
       social_zus_monthly: nonNegativeNumber(formData, "social_zus_monthly", 0),
-      health_contribution_monthly: nonNegativeNumber(formData, "health_contribution_monthly", 0),
+      health_contribution_rate: healthContributionRate,
       vat_payer: textValue(formData, "vat_payer") === "on",
       vat_rate: vatRate,
       notes: optionalText(formData, "notes"),
