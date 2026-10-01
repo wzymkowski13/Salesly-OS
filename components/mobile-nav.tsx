@@ -28,7 +28,7 @@ export function MobileNav() {
   const items = pathname.startsWith("/private") ? privateItems : workItems;
   return <nav className={cn(
     "fixed inset-x-3 bottom-3 z-50 grid rounded-2xl border border-[#dbe3ec] bg-white/95 px-1.5 py-1.5 shadow-[0_14px_42px_rgba(31,48,65,.16)] backdrop-blur lg:hidden",
-    items.length === 4 ? "grid-cols-4" : "grid-cols-5"
+    "grid-cols-5"
   )}>
     {items.map(([href,label,Icon]) => {
       const active = pathname === href || (href !== "/dashboard" && href !== "/private" && pathname.startsWith(`${href}/`));
