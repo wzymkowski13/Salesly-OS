@@ -358,3 +358,47 @@ export async function commitFinanceImport(formData: FormData) {
     description: `${importedCount} zaimportowanych · ${skippedCount} pominiętych duplikatów`,
   };
 }
+
+
+function nonNegativeNumber(formData: FormData, key: string, fallback = 0) {
+  const raw = textValue(formData, key).replace(",", ".");
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`Nieprawidłowa wartość pola ${key}.`);
+  return Math.round(value * 1000) / 1000;
+}
+
+export async function saveFinanceTaxProfile(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const taxMethod = textValue(formData, "tax_method") || "profit_rate";
+  if (!["profit_rate","revenue_rate","custom"].includes(taxMethod)) {
+    throw new Error("Nieprawidłowy sposób estymacji podatku.");
+  }
+
+  const taxRate = nonNegativeNumber(formData, "tax_rate", 0);
+  const vatRate = nonNegativeNumber(formData, "vat_rate", 23);
+  if (taxRate > 100 || vatRate > 100) throw new Error("Stawka procentowa nie może przekraczać 100%.");
+
+  const { error } = await supabase
+    .from("finance_tax_profiles")
+    .upsert({
+      user_id: user.id,
+      tax_method: taxMethod,
+      tax_rate: taxRate,
+      social_zus_monthly: nonNegativeNumber(formData, "social_zus_monthly", 0),
+      health_contribution_monthly: nonNegativeNumber(formData, "health_contribution_monthly", 0),
+      vat_payer: textValue(formData, "vat_payer") === "on",
+      vat_rate: vatRate,
+      notes: optionalText(formData, "notes"),
+    });
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return {
+    ok: true,
+    message: "Profil finansowy zapisany",
+    description: "Estymacja netto została przeliczona na nowych założeniach.",
+  };
+}
