@@ -110,12 +110,14 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const privateExpenses = expenseRows.filter((row:any) => row.scope === "private").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
 
   const socialZus = Number(taxProfile?.social_zus_monthly || 0);
-  const healthContribution = Number(taxProfile?.health_contribution_monthly || 0);
+  const healthContributionRate = Number(taxProfile?.health_contribution_rate ?? 9);
   const taxRate = Number(taxProfile?.tax_rate || 0);
   const taxMethod = String(taxProfile?.tax_method || "profit_rate");
   const taxableBase = taxMethod === "revenue_rate"
     ? Math.max(0, businessIncome - socialZus)
     : Math.max(0, businessIncome - businessExpenses - socialZus);
+  const healthContributionBase = Math.max(0, businessIncome - businessExpenses - socialZus);
+  const healthContribution = taxProfile ? healthContributionBase * healthContributionRate / 100 : 0;
   const estimatedTax = taxProfile ? taxableBase * taxRate / 100 : 0;
   const estimatedBusinessNet = taxProfile
     ? businessIncome - businessExpenses - socialZus - healthContribution - estimatedTax
@@ -191,8 +193,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <Input name="social_zus_monthly" type="number" min="0" step="0.01" defaultValue={Number(taxProfile?.social_zus_monthly ?? 0)}/>
     </div>
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Składka zdrowotna / mies.</label>
-      <Input name="health_contribution_monthly" type="number" min="0" step="0.01" defaultValue={Number(taxProfile?.health_contribution_monthly ?? 0)}/>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Składka zdrowotna (% dochodu)</label>
+      <Input name="health_contribution_rate" type="number" min="0" max="100" step="0.001" defaultValue={Number(taxProfile?.health_contribution_rate ?? 9)}/>
+      <div className="mt-1 text-[11px] leading-4 text-[#8a98a3]">Liczona od: przychód firmowy − koszty firmowe − ZUS społeczny.</div>
     </div>
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">VAT</label>
@@ -281,7 +284,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Przychód firmowy</div><div className="mt-1 font-bold text-[#40515d]">{money(businessIncome)}</div></div>
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Koszty firmowe</div><div className="mt-1 font-bold text-[#40515d]">{money(businessExpenses)}</div></div>
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Podatek est.</div><div className="mt-1 font-bold text-[#40515d]">{money(estimatedTax)}</div></div>
-              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(socialZus + healthContribution)}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(socialZus + healthContribution)}</div><div className="mt-0.5 text-[10px] text-[#8a98a3]">zdrowotna: {healthContributionRate}% dochodu</div></div>
             </div>
             <div className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">Estymacja do planowania cashflow — nie wynik księgowy ani wyliczenie deklaracji.</div>
           </div> : <EmptyState title="Ustaw założenia" description="Podaj stawkę podatku i miesięczne składki, a OS zacznie liczyć orientacyjne netto firmy."/>}
