@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { pl } from "date-fns/locale";
-import { Building2, ChevronLeft, ChevronRight, CircleDollarSign, Pencil, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw } from "@/lib/date";
 import { createFinanceCategory, createFinanceSource, deleteFinanceTransaction, updateFinanceTransaction } from "@/lib/actions/finance";
 import { FinanceTransactionEditForm, FinanceTransactionForm } from "@/components/finance-transaction-form";
+import { FinanceImportPanel } from "@/components/finance-import-panel";
 import { SectionHeader } from "@/components/section-header";
 import { FormDisclosure } from "@/components/form-disclosure";
 import { ActionForm } from "@/components/action-form";
@@ -56,6 +57,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     { data: transactions, error: transactionsError },
     { data: sources, error: sourcesError },
     { data: categories, error: categoriesError },
+    { data: importBatches, error: importBatchesError },
   ] = await Promise.all([
     supabase
       .from("finance_transactions")
@@ -67,6 +69,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       .order("created_at", { ascending: false }),
     supabase.from("finance_sources").select("id,name").eq("user_id", user.id).eq("active", true).order("name"),
     supabase.from("finance_categories").select("id,name,transaction_type,scope").eq("user_id", user.id).eq("active", true).order("name"),
+    supabase.from("finance_import_batches").select("id,file_name,row_count,imported_count,skipped_count,status,error_message,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
   ]);
 
   if (transactionsError || sourcesError || categoriesError) {
@@ -82,6 +85,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>;
   }
 
+  const importReady = !importBatchesError;
   const rows = transactions || [];
   const incomeRows = rows.filter((row:any) => row.transaction_type === "income");
   const expenseRows = rows.filter((row:any) => row.transaction_type === "expense");
@@ -101,6 +105,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     categories={(categories || []) as any[]}
     defaultDate={todayInWarsaw()}
   />;
+
+  const importForm = importReady ? <FinanceImportPanel
+    sources={(sources || []) as any[]}
+    categories={(categories || []) as any[]}
+  /> : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+    Import bankowy wymaga migracji <strong>010_finance_bank_import.sql</strong>.
+  </div>;
 
   const addSourceForm = <ActionForm
     action={createFinanceSource}
@@ -139,7 +150,10 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   return <div className="space-y-6">
     <SectionHeader
       title="Finanse"
-      action={<FormDisclosure label="Dodaj transakcję" align="right">{addForm}</FormDisclosure>}
+      action={<div className="flex flex-wrap gap-2">
+        <FormDisclosure label="Import bankowy" variant="secondary" align="right">{importForm}</FormDisclosure>
+        <FormDisclosure label="Dodaj transakcję" align="right">{addForm}</FormDisclosure>
+      </div>}
     />
 
     <div className="flex flex-col gap-3 rounded-[18px] border border-[#dfe6ee] bg-white p-3 shadow-[0_1px_2px_rgba(28,44,60,.03)] sm:flex-row sm:items-center sm:justify-between">
@@ -182,6 +196,30 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </CardContent>
       </Card>
     </div>
+
+    {importReady && (importBatches || []).length > 0 && <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><FileUp size={17}/></div>
+          <div><h2 className="font-bold text-[#2a3944]">Ostatnie importy bankowe</h2><div className="text-xs text-[#83909b]">historia ostatnich plików</div></div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {(importBatches || []).map((batch:any) => <div key={batch.id} className="flex flex-col gap-2 rounded-xl border border-[#edf1f5] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="truncate text-sm font-semibold text-[#40515d]">{batch.file_name}</div>
+              <Badge variant={batch.status === "completed" ? "green" : batch.status === "partial" ? "amber" : "red"}>{batch.status === "completed" ? "Gotowe" : batch.status === "partial" ? "Częściowy" : "Błąd"}</Badge>
+            </div>
+            <div className="mt-1 text-xs text-[#8996a0]">{new Intl.DateTimeFormat("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(batch.created_at))}</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5 text-[#647581]">{batch.imported_count || 0} zaimportowanych</span>
+            {(batch.skipped_count || 0) > 0 && <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">{batch.skipped_count} pominiętych</span>}
+          </div>
+        </div>)}
+      </CardContent>
+    </Card>}
 
     <Card>
       <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
