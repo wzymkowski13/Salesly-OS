@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, CalendarDays, CheckSquare2, MapPin } from "lucide-react";
+import { ArrowRight, BookOpenCheck, CalendarDays, CheckSquare2, MapPin, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { warsawDayRange } from "@/lib/date";
+import { endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -29,13 +30,24 @@ export default async function PrivateDashboardPage() {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const { start: todayStart, end: todayEnd } = warsawDayRange(today);
+  const monthDate = parseISO(`${today.slice(0,7)}-01`);
+  const monthFrom = format(startOfMonth(monthDate), "yyyy-MM-dd");
+  const monthTo = format(endOfMonth(monthDate), "yyyy-MM-dd");
 
-  const [{ data: todayClasses }, { data: classes }, { data: exams }, { data: tasks }] = await Promise.all([
+  const [{ data: todayClasses }, { data: classes }, { data: exams }, { data: tasks }, financeResult] = await Promise.all([
     supabase.from("study_classes").select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,study_subjects(name)").eq("user_id", user.id).gte("starts_at", todayStart).lte("starts_at", todayEnd).neq("attendance_status","cancelled").order("starts_at"),
     supabase.from("study_classes").select("id,subject_id,class_type,title,room,starts_at,attendance_status,study_subjects(name)").eq("user_id", user.id).gte("starts_at", now).neq("attendance_status","cancelled").order("starts_at").limit(5),
     supabase.from("study_subjects").select("id,name,pass_type,pass_date").eq("user_id", user.id).is("archived_at", null).gte("pass_date", today).order("pass_date").limit(5),
     supabase.from("tasks").select("id,title,due_date,due_time,priority,scope").eq("assigned_to", user.id).in("scope", ["private","study"]).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(7),
+    supabase.from("finance_transactions").select("transaction_type,amount").eq("user_id", user.id).gte("occurred_on", monthFrom).lte("occurred_on", monthTo),
   ]);
+
+  const financeRows = financeResult.data || [];
+  const financeReady = !financeResult.error;
+  const monthIncome = financeRows.filter((row:any) => row.transaction_type === "income").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+  const monthExpenses = financeRows.filter((row:any) => row.transaction_type === "expense").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+  const monthBalance = monthIncome - monthExpenses;
+  const money = (value:number) => new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN", maximumFractionDigits: 0 }).format(value);
 
   return <div className="space-y-7">
     <div>
@@ -67,7 +79,7 @@ export default async function PrivateDashboardPage() {
       </CardContent>
     </Card>
 
-    <div className="grid gap-5 xl:grid-cols-3">
+    <div className="grid gap-5 xl:grid-cols-4">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3"><div className="rounded-xl bg-violet-50 p-2 text-violet-600"><BookOpenCheck size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Najbliższe zajęcia</h2><div className="text-xs text-[#83909b]">Studia</div></div></div>
@@ -100,6 +112,22 @@ export default async function PrivateDashboardPage() {
         <CardContent className="space-y-2">
           {(tasks || []).map((task: any) => <Link key={task.id} href="/private/tasks" className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3 transition hover:bg-[#f7f9fc]"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[#40515d]">{task.title}</div><div className="mt-0.5 text-xs text-[#8996a0]">{task.due_date ? fmtDate(task.due_date) : "bez terminu"}{task.due_time ? ` · ${String(task.due_time).slice(0,5)}` : ""}</div></div><Badge variant={task.scope === "study" ? "blue" : "neutral"}>{task.scope === "study" ? "Studia" : "Prywatne"}</Badge></Link>)}
           {!(tasks || []).length && <EmptyState title="Brak aktywnych zadań" description="Prywatna lista jest czysta."/>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><WalletCards size={18}/></div><div><h2 className="font-bold text-[#2a3944]">Finanse miesiąca</h2><div className="text-xs text-[#83909b]">Prywatne + działalność</div></div></div>
+          <Link href="/private/finance" className="text-sm font-semibold text-[#5f79ad]">Finanse <ArrowRight size={15} className="inline"/></Link>
+        </CardHeader>
+        <CardContent>
+          {financeReady ? <div className="space-y-3">
+            <div className="rounded-xl bg-emerald-50 px-3 py-3"><div className="text-xs font-semibold text-emerald-700">Przychody</div><div className="mt-1 text-xl font-black text-emerald-700">{money(monthIncome)}</div></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-[#f7f9fc] px-3 py-2.5"><div className="text-[11px] text-[#8996a0]">Koszty</div><div className="mt-1 font-bold text-[#40515d]">{money(monthExpenses)}</div></div>
+              <div className="rounded-xl bg-[#edf3ff] px-3 py-2.5"><div className="text-[11px] text-[#6f83ad]">Bilans</div><div className="mt-1 font-bold text-[#416fc9]">{money(monthBalance)}</div></div>
+            </div>
+          </div> : <EmptyState title="Finanse nieaktywne" description="Uruchom migrację 009, aby włączyć moduł finansowy."/>}
         </CardContent>
       </Card>
     </div>
