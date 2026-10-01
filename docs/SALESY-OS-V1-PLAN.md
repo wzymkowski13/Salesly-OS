@@ -338,4 +338,21 @@ Foundation jest gotowy, gdy:
 - [x] historia synchronizacji USOS
 - [x] filtrowanie najbliższych zajęć po typie
 - [ ] test PCz na prawdziwym koncie
-- [ ] przegląd mobile modułu Studia
+- [x] przegląd mobile modułu Studia
+
+
+### Etap D — Finanse v1
+- [x] fundament bazy danych transakcji
+- [x] przychód / koszt
+- [x] firmowe / prywatne
+- [x] źródła przychodów
+- [x] kategorie kosztów i przychodów
+- [x] miesięczne podsumowanie
+- [x] struktura źródeł przychodów
+- [x] struktura kategorii kosztów
+- [x] edycja i usuwanie transakcji
+- [x] własne źródła i kategorie
+- [x] widget finansowy na dashboardzie Prywatne
+- [ ] import bankowy CSV/XLSX
+- [ ] profil podatkowy i estymowany netto
+- [ ] analityka 12M / m-m / y-y
