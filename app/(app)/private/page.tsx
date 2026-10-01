@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpenCheck, CalendarDays, CheckSquare2, MapPin } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { warsawDayRange } from "@/lib/date";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,8 +28,7 @@ export default async function PrivateDashboardPage() {
   const now = new Date().toISOString();
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
-  const todayStart = new Date(`${today}T00:00:00+02:00`).toISOString();
-  const todayEnd = new Date(`${today}T23:59:59+02:00`).toISOString();
+  const { start: todayStart, end: todayEnd } = warsawDayRange(today);
 
   const [{ data: todayClasses }, { data: classes }, { data: exams }, { data: tasks }] = await Promise.all([
     supabase.from("study_classes").select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,study_subjects(name)").eq("user_id", user.id).gte("starts_at", todayStart).lte("starts_at", todayEnd).neq("attendance_status","cancelled").order("starts_at"),
