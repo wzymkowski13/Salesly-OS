@@ -19,7 +19,8 @@
     "react-dom": "19.2.0",
     "tailwind-merge": "latest",
     "date-fns-tz": "3.2.0",
-    "@dnd-kit/core": "^6.3.1"
+    "@dnd-kit/core": "^6.3.1",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
