@@ -49,6 +49,25 @@ export default async function PrivateCalendarPage({ searchParams }: { searchPara
     supabase.from("profiles").select("id,full_name,email").eq("is_active", true).order("full_name"),
   ]);
 
+  // Defensive UI dedupe: old USOS sync versions may have left a cancelled
+  // legacy row next to the current canonical row for the same physical class.
+  // Prefer an active row for subject + class type + exact start time.
+  const dedupedStudyClasses = [...new Map(
+    (studyClasses || []).reduce((entries: Array<[string, any]>, item: any) => {
+      const key = [item.subject_id, item.class_type, item.starts_at].join("|");
+      const existingIndex = entries.findIndex(([entryKey]) => entryKey === key);
+      if (existingIndex === -1) {
+        entries.push([key, item]);
+      } else {
+        const existing = entries[existingIndex][1];
+        if (existing.attendance_status === "cancelled" && item.attendance_status !== "cancelled") {
+          entries[existingIndex] = [key, item];
+        }
+      }
+      return entries;
+    }, [])
+  ).values()];
+
   const initialItems: CalendarItem[] = [
     ...(events || []).map((event:any)=>({
       id: event.id,
@@ -62,7 +81,7 @@ export default async function PrivateCalendarPage({ searchParams }: { searchPara
       clients: event.clients,
       event_type: event.event_type,
     })),
-    ...(studyClasses || []).map((item:any)=>({
+    ...dedupedStudyClasses.map((item:any)=>({
       id: item.id,
       kind: "study" as const,
       title: item.title || item.study_subjects?.name || "Zajęcia",
