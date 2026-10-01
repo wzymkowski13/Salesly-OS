@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { pl } from "date-fns/locale";
-import { Building2, ChevronLeft, ChevronRight, CircleDollarSign, ReceiptText, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, CircleDollarSign, Pencil, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw } from "@/lib/date";
-import { deleteFinanceTransaction } from "@/lib/actions/finance";
-import { FinanceTransactionForm } from "@/components/finance-transaction-form";
+import { createFinanceCategory, createFinanceSource, deleteFinanceTransaction, updateFinanceTransaction } from "@/lib/actions/finance";
+import { FinanceTransactionEditForm, FinanceTransactionForm } from "@/components/finance-transaction-form";
 import { SectionHeader } from "@/components/section-header";
 import { FormDisclosure } from "@/components/form-disclosure";
 import { ActionForm } from "@/components/action-form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatCard } from "@/components/stat-card";
 import { cn } from "@/lib/utils";
@@ -100,6 +102,40 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     defaultDate={todayInWarsaw()}
   />;
 
+  const addSourceForm = <ActionForm
+    action={createFinanceSource}
+    successMessage="Źródło przychodu dodane"
+    resetOnSuccess
+    className="space-y-4"
+  >
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa źródła</label>
+      <Input name="name" required placeholder="Np. Salesly Performance"/>
+    </div>
+    <div className="flex justify-end"><Button type="submit"><Plus size={15}/> Dodaj źródło</Button></div>
+  </ActionForm>;
+
+  const addCategoryForm = <ActionForm
+    action={createFinanceCategory}
+    successMessage="Kategoria dodana"
+    resetOnSuccess
+    className="grid gap-4 md:grid-cols-2"
+  >
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa kategorii</label>
+      <Input name="name" required placeholder="Np. Hosting"/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label>
+      <Select name="transaction_type" defaultValue="expense"><option value="expense">Koszt</option><option value="income">Przychód</option></Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Obszar</label>
+      <Select name="scope" defaultValue="business"><option value="business">Firmowe</option><option value="private">Prywatne</option><option value="">Oba</option></Select>
+    </div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit"><Plus size={15}/> Dodaj kategorię</Button></div>
+  </ActionForm>;
+
   return <div className="space-y-6">
     <SectionHeader
       title="Finanse"
@@ -148,6 +184,31 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>
 
     <Card>
+      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-[#f4f7fa] p-2 text-[#627482]"><Settings2 size={17}/></div>
+          <div><h2 className="font-bold text-[#2a3944]">Słowniki finansowe</h2><div className="text-xs text-[#83909b]">własne źródła przychodów i kategorie</div></div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <FormDisclosure label="Źródło" compact variant="secondary" align="right">{addSourceForm}</FormDisclosure>
+          <FormDisclosure label="Kategoria" compact variant="secondary" align="right">{addCategoryForm}</FormDisclosure>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[#8b98a3]">Źródła przychodów</div>
+            <div className="flex flex-wrap gap-2">{(sources || []).map((source:any) => <Badge key={source.id} variant="neutral">{source.name}</Badge>)}</div>
+          </div>
+          <div>
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[#8b98a3]">Aktywne kategorie</div>
+            <div className="flex flex-wrap gap-2">{(categories || []).slice(0,12).map((category:any) => <Badge key={category.id} variant={category.transaction_type === "income" ? "green" : category.scope === "business" ? "blue" : "neutral"}>{category.name}</Badge>)}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
       <CardHeader>
         <div><h2 className="font-bold text-[#2a3944]">Transakcje</h2><div className="text-xs text-[#83909b]">przychody i koszty z wybranego miesiąca</div></div>
         <ReceiptText size={18} className="text-[#81909b]"/>
@@ -165,9 +226,30 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <div className={cn("text-base font-black", row.transaction_type === "income" ? "text-emerald-600" : "text-[#3f4f5a]")}>{row.transaction_type === "income" ? "+" : "−"}{money(Number(row.amount || 0))}</div>
-            <ActionForm action={deleteFinanceTransaction.bind(null, row.id)} successMessage="Transakcja usunięta">
-              <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button>
-            </ActionForm>
+            <div className="flex items-center gap-1">
+              <FormDisclosure label="Edytuj" compact variant="secondary" align="right">
+                <FinanceTransactionEditForm
+                  action={updateFinanceTransaction.bind(null, row.id)}
+                  sources={(sources || []) as any[]}
+                  categories={(categories || []) as any[]}
+                  defaultDate={row.occurred_on}
+                  defaults={{
+                    transaction_type: row.transaction_type,
+                    scope: row.scope,
+                    amount: Number(row.amount || 0),
+                    occurred_on: row.occurred_on,
+                    description: row.description,
+                    category_id: row.category_id,
+                    source_id: row.source_id,
+                    recurring: Boolean(row.recurring),
+                    notes: row.notes,
+                  }}
+                />
+              </FormDisclosure>
+              <ActionForm action={deleteFinanceTransaction.bind(null, row.id)} successMessage="Transakcja usunięta">
+                <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button>
+              </ActionForm>
+            </div>
           </div>
         </div>)}
         {!rows.length && <EmptyState title="Brak transakcji" description="Dodaj pierwszy przychód lub koszt w tym miesiącu."/>}
