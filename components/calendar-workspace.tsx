@@ -175,6 +175,7 @@ export function CalendarWorkspace({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activeRect, setActiveRect] = useState<ActiveRect>(null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
   const { pushToast } = useToast();
@@ -225,6 +226,11 @@ export function CalendarWorkspace({
       return;
     }
     setSelectedKey(`${item.kind}:${item.id}`);
+  }
+
+  function openExpandedItem(item: CalendarItem) {
+    setExpandedDate(null);
+    openItem(item);
   }
 
   const selected = items.find(item => `${item.kind}:${item.id}` === selectedKey) || null;
@@ -401,7 +407,11 @@ export function CalendarWorkspace({
               </div>
               <div className="space-y-1.5">
                 {list.slice(0,4).map(item => <DraggableCalendarItem key={`${item.kind}:${item.id}`} item={item} compact onOpen={() => openItem(item)}/>)}
-                {list.length > 4 && <div className="px-1 text-[11px] font-semibold text-[#7e8c97]">+{list.length-4} więcej</div>}
+                {list.length > 4 && <button
+                  type="button"
+                  onClick={() => setExpandedDate(date)}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold text-[#5f79ad] transition hover:bg-[#edf3ff] hover:text-[#3e6fd4]"
+                >+{list.length-4} więcej</button>}
               </div>
             </DroppableDay>;
           })}</div>
@@ -428,6 +438,34 @@ export function CalendarWorkspace({
       </div>}
       {overlay}
     </DndContext>
+
+    <Modal
+      open={Boolean(expandedDate)}
+      onClose={() => setExpandedDate(null)}
+      title={expandedDate ? format(parseISO(expandedDate), "EEEE, d MMMM yyyy", { locale: pl }) : "Dzień"}
+      eyebrow="Wszystkie pozycje"
+      className="sm:max-w-xl"
+    >
+      <div className="space-y-2">
+        {(expandedDate ? (grouped.get(expandedDate) || []) : []).map(item => <button
+          key={`${item.kind}:${item.id}`}
+          type="button"
+          onClick={() => openExpandedItem(item)}
+          className={cn(
+            "w-full rounded-xl border border-l-[3px] p-3 text-left transition hover:-translate-y-px hover:shadow-[0_8px_22px_rgba(31,48,65,.08)]",
+            itemStyle(item)
+          )}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs font-bold opacity-75">{item.start_time}{item.end_time ? `–${item.end_time}` : ""}</div>
+            <Badge className="bg-white/70" variant={item.kind === "task" ? "neutral" : "blue"}>{itemLabel(item)}</Badge>
+          </div>
+          <div className="mt-1.5 text-sm font-bold">{item.title}</div>
+          {item.clients?.name && <div className="mt-1 text-xs opacity-75">{item.clients.name}</div>}
+          {item.kind === "study" && (item.room || item.building) && <div className="mt-1 text-xs opacity-75">{[item.room ? `sala ${item.room}` : "", item.building || ""].filter(Boolean).join(" · ")}</div>}
+        </button>)}
+      </div>
+    </Modal>
 
     <Modal open={Boolean(selected)} onClose={() => setSelectedKey(null)} title={selected?.title || "Pozycja kalendarza"} eyebrow={selected ? itemLabel(selected) : undefined}>
       {selected?.kind === "study" && <div className="space-y-5">
