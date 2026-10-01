@@ -148,11 +148,11 @@ export default async function StudyClassPage({ params }: { params: Promise<{ sub
           {!isUsos && <FormDisclosure label="Edytuj zajęcia" variant="secondary" align="right">{editForm}</FormDisclosure>}
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
           <div className="rounded-2xl bg-[#f7f9fc] p-3.5"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><CalendarDays size={14}/> Godzina</div><div className="mt-1.5 font-bold text-[#3d4f5b]">{fmtTime(studyClass.starts_at)}{studyClass.ends_at ? `–${fmtTime(studyClass.ends_at)}` : ""}</div></div>
           <div className="rounded-2xl bg-[#f7f9fc] p-3.5"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><MapPin size={14}/> Sala</div><div className="mt-1.5 font-bold text-[#3d4f5b]">{studyClass.room || "—"}</div></div>
-          <div className="rounded-2xl bg-[#f7f9fc] p-3.5"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><BookOpenCheck size={14}/> Budynek</div><div className="mt-1.5 truncate font-bold text-[#3d4f5b]">{studyClass.building || "—"}</div></div>
-          <div className="rounded-2xl bg-[#f7f9fc] p-3.5"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><UserRound size={14}/> Prowadzący</div><div className="mt-1.5 truncate font-bold text-[#3d4f5b]">{studyClass.lecturer || subject.lecturer || "—"}</div></div>
+          <div className="col-span-2 rounded-2xl bg-[#f7f9fc] p-3.5 xl:col-span-1"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><BookOpenCheck size={14}/> Budynek</div><div className="mt-1.5 truncate font-bold text-[#3d4f5b]">{studyClass.building || "—"}</div></div>
+          <div className="col-span-2 rounded-2xl bg-[#f7f9fc] p-3.5 xl:col-span-1"><div className="flex items-center gap-2 text-xs font-semibold text-[#8a98a3]"><UserRound size={14}/> Prowadzący</div><div className="mt-1.5 truncate font-bold text-[#3d4f5b]">{studyClass.lecturer || subject.lecturer || "—"}</div></div>
         </div>
       </div>
     </div>
@@ -171,7 +171,7 @@ export default async function StudyClassPage({ params }: { params: Promise<{ sub
         </Card>
 
         <Card>
-          <CardHeader><div><h2 className="font-bold text-[#2a3944]">Oceny z tych zajęć</h2><div className="text-xs text-[#83909b]">automatycznie trafiają też do karty przedmiotu</div></div><FormDisclosure label="Dodaj ocenę" compact align="right">{gradeForm}</FormDisclosure></CardHeader>
+          <CardHeader className="flex-col items-start sm:flex-row sm:items-center"><div><h2 className="font-bold text-[#2a3944]">Oceny z tych zajęć</h2><div className="text-xs text-[#83909b]">automatycznie trafiają też do karty przedmiotu</div></div><FormDisclosure label="Dodaj ocenę" compact align="right">{gradeForm}</FormDisclosure></CardHeader>
           <CardContent className="space-y-2">
             {(grades || []).map((grade:any) => <div key={grade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1f5] px-3 py-3">
               <div className="min-w-0"><div className="truncate text-sm font-semibold text-[#40515d]">{grade.label}</div><div className="mt-0.5 text-xs text-[#8996a0]">waga {Number(grade.weight || 0)}%{grade.notes ? ` · ${grade.notes}` : ""}</div></div>
@@ -194,7 +194,7 @@ export default async function StudyClassPage({ params }: { params: Promise<{ sub
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
             <div><h2 className="font-bold text-[#2a3944]">Materiały i Google Docs</h2><div className="text-xs text-[#83909b]">dokumenty przypięte tylko do tych zajęć</div></div>
             {googleIntegration ? <FormDisclosure label="Google Doc" compact align="right">{googleDocForm}</FormDisclosure> : <Link href="/settings" className="text-sm font-semibold text-[#5f79ad]">Podłącz Google</Link>}
           </CardHeader>
