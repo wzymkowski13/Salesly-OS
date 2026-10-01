@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { pl } from "date-fns/locale";
-import { Building2, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { BarChart3, Building2, Calculator, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw } from "@/lib/date";
-import { createFinanceCategory, createFinanceSource, deleteFinanceTransaction, updateFinanceTransaction } from "@/lib/actions/finance";
+import { createFinanceCategory, createFinanceSource, deleteFinanceTransaction, saveFinanceTaxProfile, updateFinanceTransaction } from "@/lib/actions/finance";
 import { FinanceTransactionEditForm, FinanceTransactionForm } from "@/components/finance-transaction-form";
 import { FinanceImportPanel } from "@/components/finance-import-panel";
 import { SectionHeader } from "@/components/section-header";
@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatCard } from "@/components/stat-card";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     { data: sources, error: sourcesError },
     { data: categories, error: categoriesError },
     { data: importBatches, error: importBatchesError },
+    taxProfileResult,
+    analyticsResult,
   ] = await Promise.all([
     supabase
       .from("finance_transactions")
@@ -70,6 +73,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     supabase.from("finance_sources").select("id,name").eq("user_id", user.id).eq("active", true).order("name"),
     supabase.from("finance_categories").select("id,name,transaction_type,scope").eq("user_id", user.id).eq("active", true).order("name"),
     supabase.from("finance_import_batches").select("id,file_name,row_count,imported_count,skipped_count,status,error_message,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
+    supabase.from("finance_tax_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("finance_transactions")
+      .select("transaction_type,scope,amount,occurred_on")
+      .eq("user_id", user.id)
+      .gte("occurred_on", format(startOfMonth(addMonths(focus, -12)), "yyyy-MM-dd"))
+      .lte("occurred_on", to)
+      .order("occurred_on"),
   ]);
 
   if (transactionsError || sourcesError || categoriesError) {
@@ -86,14 +96,47 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   }
 
   const importReady = !importBatchesError;
+  const taxReady = !taxProfileResult.error;
+  const taxProfile = taxProfileResult.data as any;
+  const analyticsRows = analyticsResult.data || [];
   const rows = transactions || [];
   const incomeRows = rows.filter((row:any) => row.transaction_type === "income");
   const expenseRows = rows.filter((row:any) => row.transaction_type === "expense");
   const income = incomeRows.reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
   const expenses = expenseRows.reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
   const balance = income - expenses;
+  const businessIncome = incomeRows.filter((row:any) => row.scope === "business").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
   const businessExpenses = expenseRows.filter((row:any) => row.scope === "business").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
   const privateExpenses = expenseRows.filter((row:any) => row.scope === "private").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+
+  const socialZus = Number(taxProfile?.social_zus_monthly || 0);
+  const healthContribution = Number(taxProfile?.health_contribution_monthly || 0);
+  const taxRate = Number(taxProfile?.tax_rate || 0);
+  const taxMethod = String(taxProfile?.tax_method || "profit_rate");
+  const taxableBase = taxMethod === "revenue_rate"
+    ? Math.max(0, businessIncome - socialZus)
+    : Math.max(0, businessIncome - businessExpenses - socialZus);
+  const estimatedTax = taxProfile ? taxableBase * taxRate / 100 : 0;
+  const estimatedBusinessNet = taxProfile
+    ? businessIncome - businessExpenses - socialZus - healthContribution - estimatedTax
+    : null;
+
+  const monthlyStats = Array.from({ length: 13 }, (_, index) => {
+    const date = addMonths(focus, index - 12);
+    const key = format(date, "yyyy-MM");
+    const monthRows = analyticsRows.filter((row:any) => String(row.occurred_on).startsWith(key));
+    const monthIncome = monthRows.filter((row:any) => row.transaction_type === "income").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+    const monthExpense = monthRows.filter((row:any) => row.transaction_type === "expense").reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+    return { key, date, income: monthIncome, expense: monthExpense, balance: monthIncome - monthExpense };
+  });
+  const trend12 = monthlyStats.slice(1);
+  const currentStats = monthlyStats[12];
+  const previousStats = monthlyStats[11];
+  const yearAgoStats = monthlyStats[0];
+  const pctChange = (current:number, base:number) => base === 0 ? null : ((current - base) / Math.abs(base)) * 100;
+  const incomeMoM = pctChange(currentStats.income, previousStats.income);
+  const incomeYoY = pctChange(currentStats.income, yearAgoStats.income);
+  const trendMax = Math.max(1, ...trend12.flatMap(item => [item.income,item.expense]));
 
   const incomeBreakdown = aggregate(incomeRows, row => row.finance_sources?.name || "Bez źródła");
   const expenseBreakdown = aggregate(expenseRows, row => row.finance_categories?.name || "Bez kategorii");
@@ -125,6 +168,52 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>
     <div className="flex justify-end"><Button type="submit"><Plus size={15}/> Dodaj źródło</Button></div>
   </ActionForm>;
+
+  const taxProfileForm = taxReady ? <ActionForm
+    action={saveFinanceTaxProfile}
+    successMessage="Profil finansowy zapisany"
+    className="grid gap-4 md:grid-cols-2"
+  >
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Sposób estymacji podatku</label>
+      <Select name="tax_method" defaultValue={taxProfile?.tax_method || "profit_rate"}>
+        <option value="profit_rate">Procent od dochodu (przychód − koszty)</option>
+        <option value="revenue_rate">Procent od przychodu</option>
+        <option value="custom">Niestandardowo od dochodu</option>
+      </Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Stawka podatku (%)</label>
+      <Input name="tax_rate" type="number" min="0" max="100" step="0.001" defaultValue={Number(taxProfile?.tax_rate ?? 12)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">ZUS społeczny / mies.</label>
+      <Input name="social_zus_monthly" type="number" min="0" step="0.01" defaultValue={Number(taxProfile?.social_zus_monthly ?? 0)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Składka zdrowotna / mies.</label>
+      <Input name="health_contribution_monthly" type="number" min="0" step="0.01" defaultValue={Number(taxProfile?.health_contribution_monthly ?? 0)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">VAT</label>
+      <label className="flex h-10 items-center gap-2 rounded-xl border border-[#dbe3ec] bg-white px-3 text-sm text-[#536674]">
+        <input type="checkbox" name="vat_payer" defaultChecked={Boolean(taxProfile?.vat_payer)} className="h-4 w-4 rounded"/>
+        Jestem podatnikiem VAT
+      </label>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Stawka VAT (%)</label>
+      <Input name="vat_rate" type="number" min="0" max="100" step="0.001" defaultValue={Number(taxProfile?.vat_rate ?? 23)}/>
+    </div>
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Założenia / notatka</label>
+      <Textarea name="notes" rows={3} defaultValue={taxProfile?.notes || ""} placeholder="Np. stawka uśredniona do szybkiego planowania cashflow"/>
+    </div>
+    <div className="md:col-span-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+      To jest kalkulator operacyjny. Nie zastępuje księgowości; VAT nie jest jeszcze wliczany do estymowanego netto.
+    </div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit">Zapisz założenia</Button></div>
+  </ActionForm> : <div className="text-sm text-amber-700">Uruchom migrację 011, aby włączyć kalkulator netto.</div>;
 
   const addCategoryForm = <ActionForm
     action={createFinanceCategory}
@@ -171,6 +260,58 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <StatCard label="Koszty" value={money(expenses)} hint="w tym miesiącu" icon={TrendingDown} tone="amber"/>
       <StatCard label="Bilans" value={money(balance)} hint="przychody minus koszty" icon={CircleDollarSign} tone={balance >= 0 ? "blue" : "slate"}/>
       <StatCard label="Koszty firmowe" value={money(businessExpenses)} hint={`prywatne: ${money(privateExpenses)}`} icon={Building2} tone="slate"/>
+    </div>
+
+    <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
+      <Card className={taxProfile ? "border-emerald-200" : ""}>
+        <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><Calculator size={18}/></div>
+            <div><h2 className="font-bold text-[#2a3944]">Netto firmy — estymacja</h2><div className="text-xs text-[#83909b]">na podstawie bieżącego miesiąca</div></div>
+          </div>
+          <FormDisclosure label="Założenia" compact variant="secondary" align="right">{taxProfileForm}</FormDisclosure>
+        </CardHeader>
+        <CardContent>
+          {taxProfile ? <div className="space-y-4">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#8795a1]">Szacowane netto</div>
+              <div className={cn("mt-1 text-3xl font-black tracking-[-0.04em]", Number(estimatedBusinessNet || 0) >= 0 ? "text-emerald-600" : "text-red-600")}>{money(Number(estimatedBusinessNet || 0))}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Przychód firmowy</div><div className="mt-1 font-bold text-[#40515d]">{money(businessIncome)}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Koszty firmowe</div><div className="mt-1 font-bold text-[#40515d]">{money(businessExpenses)}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Podatek est.</div><div className="mt-1 font-bold text-[#40515d]">{money(estimatedTax)}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(socialZus + healthContribution)}</div></div>
+            </div>
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">Estymacja do planowania cashflow — nie wynik księgowy ani wyliczenie deklaracji.</div>
+          </div> : <EmptyState title="Ustaw założenia" description="Podaj stawkę podatku i miesięczne składki, a OS zacznie liczyć orientacyjne netto firmy."/>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><BarChart3 size={18}/></div>
+            <div><h2 className="font-bold text-[#2a3944]">Trend 12 miesięcy</h2><div className="text-xs text-[#83909b]">przychody vs koszty</div></div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge variant={incomeMoM === null ? "neutral" : incomeMoM >= 0 ? "green" : "red"}>m/m {incomeMoM === null ? "—" : `${incomeMoM >= 0 ? "+" : ""}${incomeMoM.toFixed(1)}%`}</Badge>
+            <Badge variant={incomeYoY === null ? "neutral" : incomeYoY >= 0 ? "green" : "red"}>r/r {incomeYoY === null ? "—" : `${incomeYoY >= 0 ? "+" : ""}${incomeYoY.toFixed(1)}%`}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[190px] items-end gap-2 overflow-x-auto pb-2 salesly-scrollbar">
+            {trend12.map(item => <div key={item.key} className="flex min-w-[44px] flex-1 flex-col items-center gap-1">
+              <div className="flex h-[145px] w-full items-end justify-center gap-1">
+                <div title={`Przychody: ${money(item.income)}`} className="w-[12px] rounded-t-md bg-emerald-400" style={{height:`${Math.max(item.income > 0 ? 5 : 0,(item.income/trendMax)*100)}%`}}/>
+                <div title={`Koszty: ${money(item.expense)}`} className="w-[12px] rounded-t-md bg-amber-400" style={{height:`${Math.max(item.expense > 0 ? 5 : 0,(item.expense/trendMax)*100)}%`}}/>
+              </div>
+              <div className="text-[9px] font-semibold uppercase text-[#8a98a3]">{format(item.date,"LLL",{locale:pl})}</div>
+            </div>)}
+          </div>
+          <div className="mt-2 flex items-center gap-4 text-xs text-[#74838e]"><span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-emerald-400"/> przychody</span><span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-amber-400"/> koszty</span></div>
+        </CardContent>
+      </Card>
     </div>
 
     <div className="grid gap-5 xl:grid-cols-2">
