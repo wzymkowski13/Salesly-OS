@@ -353,6 +353,7 @@ Foundation jest gotowy, gdy:
 - [x] edycja i usuwanie transakcji
 - [x] własne źródła i kategorie
 - [x] widget finansowy na dashboardzie Prywatne
-- [ ] import bankowy CSV/XLSX
-- [ ] profil podatkowy i estymowany netto
-- [ ] analityka 12M / m-m / y-y
+- [x] import bankowy CSV/XLSX
+- [x] profil podatkowy i estymowany netto
+- [x] analityka 12M / m-m / y-y
+- [ ] reguły automatycznej kategoryzacji
