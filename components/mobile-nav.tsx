@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, CalendarDays, CheckSquare2, LayoutDashboard, RefreshCcw, Users } from "lucide-react";
+import { BookOpenCheck, CalendarDays, CheckSquare2, LayoutDashboard, RefreshCcw, Users, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const workItems = [
@@ -18,6 +18,7 @@ const privateItems = [
   ["/private/tasks","Zadania",CheckSquare2],
   ["/private/calendar","Kalendarz",CalendarDays],
   ["/private/study","Studia",BookOpenCheck],
+  ["/private/finance","Finanse",WalletCards],
 ] as const;
 
 export function MobileNav() {
