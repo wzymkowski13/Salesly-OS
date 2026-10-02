@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUsosConnectionWithSecrets, revokeUsosToken } from "@/lib/usos";
 import { syncUsosForUser } from "@/lib/usos-sync";
@@ -13,7 +13,7 @@ function revalidateStudy() {
 }
 
 export async function syncUsosNow() {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const summary = await syncUsosForUser(user.id);
   revalidateStudy();
   return {
@@ -24,7 +24,7 @@ export async function syncUsosNow() {
 }
 
 export async function disconnectUsos() {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const connection = await getUsosConnectionWithSecrets(user.id);
   if (!connection) return;
 
