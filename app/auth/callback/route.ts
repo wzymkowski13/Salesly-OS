@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   if (!existingProfile) {
     const invitationResult = await admin
       .from("access_invitations")
-      .select("id,email,permission_keys,revoked_at,used_at,used_by")
+      .select("id,email,permission_keys,revoked_at,used_at,used_by,invited_by")
       .ilike("email", email)
       .is("revoked_at", null)
       .maybeSingle();
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
       const rows = [...new Set(permissionKeys)].map(permission_key => ({
         user_id: user.id,
         permission_key,
-        granted_by: invitation?.id ? invitation.used_by || null : user.id,
+        granted_by: invitation?.invited_by || user.id,
       }));
 
       const { error: permissionError } = await admin
