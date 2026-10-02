@@ -17,66 +17,84 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const workSections = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  permission: string;
+};
+
+const workSections: { label: string | null; items: NavItem[] }[] = [
   {
     label: null,
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "work.dashboard" },
     ],
   },
   {
     label: "Sprzedaż",
     items: [
-      { href: "/crm", label: "CRM", icon: Users },
-      { href: "/renewals", label: "Odnowienia", icon: RefreshCcw },
+      { href: "/crm", label: "CRM", icon: Users, permission: "work.crm" },
+      { href: "/renewals", label: "Odnowienia", icon: RefreshCcw, permission: "work.renewals" },
     ],
   },
   {
     label: "Organizacja",
     items: [
-      { href: "/tasks", label: "Zadania", icon: CheckSquare2 },
-      { href: "/calendar", label: "Kalendarz", icon: CalendarDays },
-      { href: "/notifications", label: "Powiadomienia", icon: Bell },
+      { href: "/tasks", label: "Zadania", icon: CheckSquare2, permission: "work.tasks" },
+      { href: "/calendar", label: "Kalendarz", icon: CalendarDays, permission: "work.calendar" },
+      { href: "/notifications", label: "Powiadomienia", icon: Bell, permission: "work.notifications" },
     ],
   },
   {
     label: "Leady",
     items: [
-      { href: "/lead-factory", label: "LeadFactory", icon: Factory },
+      { href: "/lead-factory", label: "LeadFactory", icon: Factory, permission: "leadfactory.access" },
     ],
   },
 ];
 
-const privateSections = [
+const privateSections: { label: string | null; items: NavItem[] }[] = [
   {
     label: null,
     items: [
-      { href: "/private", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/private", label: "Dashboard", icon: LayoutDashboard, permission: "private.dashboard" },
     ],
   },
   {
     label: "Organizacja",
     items: [
-      { href: "/private/tasks", label: "Zadania", icon: CheckSquare2 },
-      { href: "/private/calendar", label: "Kalendarz", icon: CalendarDays },
+      { href: "/private/tasks", label: "Zadania", icon: CheckSquare2, permission: "private.tasks" },
+      { href: "/private/calendar", label: "Kalendarz", icon: CalendarDays, permission: "private.calendar" },
     ],
   },
   {
     label: "Prywatne",
     items: [
-      { href: "/private/study", label: "Studia", icon: BookOpenCheck },
-      { href: "/private/finance", label: "Finanse", icon: WalletCards },
-      { href: "/private/documents", label: "Dokumenty", icon: Files },
+      { href: "/private/study", label: "Studia", icon: BookOpenCheck, permission: "private.study" },
+      { href: "/private/finance", label: "Finanse", icon: WalletCards, permission: "private.finance" },
+      { href: "/private/documents", label: "Dokumenty", icon: Files, permission: "private.documents" },
     ],
   },
 ];
 
-export function Sidebar() {
+function allows(permissions: Set<string>, permission: string) {
+  if (permissions.has("*") || permissions.has("admin.permissions") || permissions.has(permission)) return true;
+  const namespace = permission.split(".")[0];
+  return permissions.has(`${namespace}.*`);
+}
+
+export function Sidebar({ permissions: permissionList }: { permissions: string[] }) {
   const pathname = usePathname();
   if (pathname === "/home") return null;
 
+  const permissions = new Set(permissionList);
   const isPrivate = pathname.startsWith("/private");
-  const sections = isPrivate ? privateSections : workSections;
+  const sections = (isPrivate ? privateSections : workSections)
+    .map(section => ({ ...section, items: section.items.filter(item => allows(permissions, item.permission)) }))
+    .filter(section => section.items.length > 0);
+
+  const showSettings = allows(permissions, "settings.integrations") || allows(permissions, "admin.permissions");
 
   return <aside className="hidden w-[236px] shrink-0 border-r border-[#dfe6ee] bg-[#f7f9fc] lg:flex lg:flex-col">
     <div className="flex h-[74px] items-center border-b border-[#e5ebf1] px-5">
@@ -123,7 +141,7 @@ export function Sidebar() {
       </div>
     </nav>
 
-    <div className="border-t border-[#e5ebf1] px-3 py-3">
+    {showSettings && <div className="border-t border-[#e5ebf1] px-3 py-3">
       <Link
         href="/settings"
         className={cn(
@@ -136,6 +154,6 @@ export function Sidebar() {
         <Settings size={18} className={pathname.startsWith("/settings") ? "text-[#568deb]" : "text-[#82919d]"}/>
         <span>Ustawienia</span>
       </Link>
-    </div>
+    </div>}
   </aside>;
 }
