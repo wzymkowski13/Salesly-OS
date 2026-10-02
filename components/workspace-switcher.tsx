@@ -6,12 +6,12 @@ import { BriefcaseBusiness, ChevronDown, Factory, Gauge, Home, LineChart, UserRo
 import { cn } from "@/lib/utils";
 
 const items = [
-  { label: "Start", href: "/home", icon: Home },
-  { label: "Służbowe", href: "/dashboard", icon: BriefcaseBusiness },
-  { label: "Prywatne", href: "/private", icon: UserRound },
-  { label: "LeadFactory", href: "/lead-factory", icon: Factory },
-  { label: "SalesMetrics", href: "https://salesmetrics-v2.onrender.com/", icon: LineChart, external: true },
-  { label: "Call Center Panel", href: "https://salesly.pl/panel", icon: Gauge, external: true },
+  { label: "Start", href: "/home", icon: Home, permission: null },
+  { label: "Służbowe", href: "/dashboard", icon: BriefcaseBusiness, permission: "work.*" },
+  { label: "Prywatne", href: "/private", icon: UserRound, permission: "private.*" },
+  { label: "LeadFactory", href: "/lead-factory", icon: Factory, permission: "leadfactory.access" },
+  { label: "SalesMetrics", href: "https://salesmetrics-v2.onrender.com/", icon: LineChart, external: true, permission: "external.salesmetrics" },
+  { label: "Call Center Panel", href: "https://salesly.pl/panel", icon: Gauge, external: true, permission: "external.callcenter" },
 ] as const;
 
 function currentLabel(pathname: string) {
@@ -21,10 +21,23 @@ function currentLabel(pathname: string) {
   return "Służbowe";
 }
 
-export function WorkspaceSwitcher({ pathname }: { pathname: string }) {
+function allows(permissions: Set<string>, permission: string | null) {
+  if (!permission) return true;
+  if (permissions.has("*") || permissions.has("admin.permissions") || permissions.has(permission)) return true;
+  if (permission.endsWith(".*")) {
+    const prefix = permission.slice(0, -1);
+    return [...permissions].some(value => value.startsWith(prefix));
+  }
+  const namespace = permission.split(".")[0];
+  return permissions.has(`${namespace}.*`);
+}
+
+export function WorkspaceSwitcher({ pathname, permissions: permissionList }: { pathname: string; permissions: string[] }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const label = currentLabel(pathname);
+  const permissions = new Set(permissionList);
+  const visibleItems = items.filter(item => allows(permissions, item.permission));
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +66,7 @@ export function WorkspaceSwitcher({ pathname }: { pathname: string }) {
     </button>
 
     {open && <div className="absolute right-0 top-12 z-[70] w-[230px] rounded-2xl border border-[#dfe6ee] bg-white p-2 shadow-[0_18px_50px_rgba(31,48,65,.16)]">
-      {items.map(({ label: itemLabel, href, icon: Icon, ...item }) => {
+      {visibleItems.map(({ label: itemLabel, href, icon: Icon, ...item }) => {
         const external = "external" in item && item.external;
         const active = !external && (
           (href === "/home" && pathname === "/home")
