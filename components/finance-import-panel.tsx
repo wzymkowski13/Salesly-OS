@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, FileSpreadsheet, Loader2, Upload, XCircle } from "lucide-react";
-import { commitFinanceImport, previewFinanceImport } from "@/lib/actions/finance";
+import { CheckCircle2, FileSpreadsheet, Loader2, Sparkles, Upload, XCircle } from "lucide-react";
+import { commitFinanceImport, createFinanceClassificationRule, previewFinanceImport } from "@/lib/actions/finance";
 import { useToast } from "@/components/ui/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { suggestRuleMatchValue } from "@/lib/finance-rules";
 
 type Source = { id: string; name: string };
 type Category = {
@@ -30,6 +31,8 @@ type ImportRow = {
   duplicate: boolean;
   import_hash: string;
   raw_data: Record<string,string>;
+  classification_rule_id?: string | null;
+  classification_rule_name?: string | null;
 };
 
 function money(value: number) {
@@ -45,10 +48,12 @@ export function FinanceImportPanel({
 }) {
   const [previewing, startPreview] = useTransition();
   const [importing, startImport] = useTransition();
+  const [savingRule, startRuleSave] = useTransition();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [detected, setDetected] = useState<Record<string,unknown> | null>(null);
   const [defaultScope, setDefaultScope] = useState<"business"|"private">("private");
+  const [ruleDraft, setRuleDraft] = useState<{ rowId: string; matchValue: string } | null>(null);
   const { pushToast } = useToast();
 
   const selectedRows = useMemo(() => rows.filter(row => row.include && !row.duplicate), [rows]);
@@ -78,7 +83,7 @@ export function FinanceImportPanel({
         setDetected(result.detected as Record<string,unknown>);
         pushToast({
           title: "Wyciąg odczytany",
-          description: `${result.rows.length} transakcji · ${result.duplicateCount} rozpoznanych duplikatów`,
+          description: `${result.rows.length} transakcji · ${result.duplicateCount} duplikatów · ${result.classifiedCount || 0} sklasyfikowanych regułami`,
           tone: "success",
         });
       } catch (error) {
@@ -90,6 +95,47 @@ export function FinanceImportPanel({
           description: error instanceof Error ? error.message : "Sprawdź format pliku.",
           tone: "error",
           duration: 7000,
+        });
+      }
+    });
+  }
+
+  function saveRule() {
+    if (!ruleDraft) return;
+    const row = rows.find(item => item.id === ruleDraft.rowId);
+    if (!row) return;
+
+    const matchValue = ruleDraft.matchValue.trim();
+    if (matchValue.length < 2) {
+      pushToast({ title: "Fraza jest za krótka", description: "Podaj co najmniej 2 znaki.", tone: "error" });
+      return;
+    }
+
+    startRuleSave(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("name", (row.transaction_type === "income" ? "Przychód: " : "Koszt: ") + matchValue);
+        formData.set("match_value", matchValue);
+        formData.set("match_operator", "contains");
+        formData.set("applies_to_type", row.transaction_type);
+        formData.set("set_scope", row.scope);
+        if (row.category_id) formData.set("set_category_id", row.category_id);
+        if (row.source_id) formData.set("set_source_id", row.source_id);
+        formData.set("priority", "100");
+
+        const result = await createFinanceClassificationRule(formData);
+        updateRow(row.id, { classification_rule_id: result.ruleId, classification_rule_name: result.ruleName });
+        setRuleDraft(null);
+        pushToast({
+          title: "Reguła zapamiętana",
+          description: "Kolejne transakcje zawierające „" + matchValue + "” dostaną tę samą klasyfikację.",
+          tone: "success",
+        });
+      } catch (error) {
+        pushToast({
+          title: "Nie udało się zapisać reguły",
+          description: error instanceof Error ? error.message : "Spróbuj ponownie.",
+          tone: "error",
         });
       }
     });
@@ -182,8 +228,8 @@ export function FinanceImportPanel({
 
     <div className="max-h-[560px] overflow-auto rounded-2xl border border-[#dfe6ee] bg-white salesly-scrollbar">
       <div className="min-w-[980px]">
-        <div className="sticky top-0 z-10 grid grid-cols-[42px_110px_100px_1fr_130px_150px_180px] gap-2 border-b border-[#e5eaf0] bg-[#f7f9fc] px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8795a1]">
-          <div></div><div>Data</div><div>Kwota</div><div>Opis</div><div>Obszar</div><div>Kategoria</div><div>Źródło</div>
+        <div className="sticky top-0 z-10 grid grid-cols-[42px_110px_100px_1fr_130px_150px_180px_150px] gap-2 border-b border-[#e5eaf0] bg-[#f7f9fc] px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8795a1]">
+          <div></div><div>Data</div><div>Kwota</div><div>Opis</div><div>Obszar</div><div>Kategoria</div><div>Źródło</div><div>Reguła</div>
         </div>
 
         {rows.map(row => {
@@ -192,7 +238,7 @@ export function FinanceImportPanel({
             (!category.scope || category.scope === row.scope)
           );
 
-          return <div key={row.id} className={`grid grid-cols-[42px_110px_100px_1fr_130px_150px_180px] gap-2 border-b border-[#f0f3f6] px-3 py-2.5 text-sm last:border-b-0 ${row.duplicate ? "bg-amber-50/60 opacity-70" : row.include ? "bg-white" : "bg-[#fafbfd] opacity-60"}`}>
+          return <div key={row.id} className={`grid grid-cols-[42px_110px_100px_1fr_130px_150px_180px_150px] gap-2 border-b border-[#f0f3f6] px-3 py-2.5 text-sm last:border-b-0 ${row.duplicate ? "bg-amber-50/60 opacity-70" : row.include ? "bg-white" : "bg-[#fafbfd] opacity-60"}`}>
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -226,10 +272,43 @@ export function FinanceImportPanel({
                 {sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
               </Select> : <div className="flex h-9 items-center text-xs text-[#a0abb3]">—</div>}
             </div>
+            <div className="flex items-center">
+              {row.classification_rule_name ? <Badge variant="blue">{row.classification_rule_name}</Badge> : !row.duplicate ? <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="w-full justify-start text-[#5f79ad]"
+                onClick={() => setRuleDraft({ rowId: row.id, matchValue: suggestRuleMatchValue(row.description) })}
+              ><Sparkles size={13}/> Zapamiętaj</Button> : <span className="text-xs text-[#a0abb3]">—</span>}
+            </div>
           </div>;
         })}
       </div>
     </div>
+
+    {ruleDraft && (() => {
+      const row = rows.find(item => item.id === ruleDraft.rowId);
+      if (!row) return null;
+      const categoryName = categories.find(item => item.id === row.category_id)?.name || "bez kategorii";
+      const sourceName = sources.find(item => item.id === row.source_id)?.name || "bez źródła";
+      return <div className="rounded-2xl border border-[#d9e5fb] bg-[#f7faff] p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-bold text-[#3f5f9a]"><Sparkles size={15}/> Zapamiętaj klasyfikację</div>
+            <div className="mt-1 text-xs leading-5 text-[#7284a5]">Gdy przyszła transakcja będzie zawierała poniższą frazę, OS ustawi: {row.scope === "business" ? "firmowe" : "prywatne"} · {categoryName}{row.transaction_type === "income" ? " · " + sourceName : ""}.</div>
+          </div>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setRuleDraft(null)}>Anuluj</Button>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <Input
+            value={ruleDraft.matchValue}
+            onChange={event => setRuleDraft(current => current ? { ...current, matchValue: event.target.value } : current)}
+            placeholder="Fraza, np. OPENAI lub META"
+          />
+          <Button type="button" disabled={savingRule} onClick={saveRule}>{savingRule ? <Loader2 size={15} className="animate-spin"/> : <Sparkles size={15}/>} Zapisz regułę</Button>
+        </div>
+      </div>;
+    })()}
 
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="inline-flex items-center gap-2 text-xs text-[#75848f]"><CheckCircle2 size={14} className="text-emerald-600"/> Duplikaty są automatycznie pomijane także przy finalnym zapisie.</div>
