@@ -356,4 +356,15 @@ Foundation jest gotowy, gdy:
 - [x] import bankowy CSV/XLSX
 - [x] profil podatkowy i estymowany netto
 - [x] analityka 12M / m-m / y-y
-- [ ] reguły automatycznej kategoryzacji
+- [x] reguły automatycznej kategoryzacji
+
+
+### Etap D2 — Finanse v1.3
+- [x] silnik reguł klasyfikacji
+- [x] priorytety reguł
+- [x] zawiera / zaczyna się od / dokładne dopasowanie
+- [x] przypisanie obszaru, kategorii i źródła
+- [x] automatyczne reguły w podglądzie importu
+- [x] informacja, która reguła zadziałała
+- [x] tworzenie reguły z konkretnej pozycji importu
+- [x] włączanie / wyłączanie / usuwanie reguł
