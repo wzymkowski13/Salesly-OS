@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ALL_PERMISSION_KEYS, permissionSetAllows } from "@/lib/permissions";
+import { ALL_PERMISSION_KEYS, defaultRouteForPermissions, getUserAccess, permissionSetAllows } from "@/lib/permissions";
 
 function cleanEmail(value: FormDataEntryValue | null) {
   return String(value || "").trim().toLowerCase();
@@ -190,12 +190,7 @@ export async function completeOnboarding(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("is_active")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.is_active) redirect("/access-pending");
-  redirect(preferredWorkspace === "work" ? "/dashboard" : "/private");
+  const access = await getUserAccess(user.id);
+  if (!access.profile?.is_active) redirect("/access-pending");
+  redirect(defaultRouteForPermissions(access.permissions, preferredWorkspace));
 }
