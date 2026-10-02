@@ -139,3 +139,11 @@ export async function requirePermission(permission: PermissionKey) {
   }
   return access;
 }
+
+export async function requireAnyPermission(permissions: PermissionKey[]) {
+  const access = await requireActiveUser();
+  if (!hasAnyPermission(access.permissions, permissions)) {
+    redirect(`/access-denied?permission=${encodeURIComponent(permissions.join(" | "))}`);
+  }
+  return access;
+}
