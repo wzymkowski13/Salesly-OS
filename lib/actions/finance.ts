@@ -472,7 +472,7 @@ export async function createFinanceClassificationRule(formData: FormData) {
   }
   if (!setScopeRaw && !categoryId && !sourceId) throw new Error("Reguła musi ustawiać obszar, kategorię lub źródło.");
 
-  const { error } = await supabase.from("finance_classification_rules").insert({
+  const { data, error } = await supabase.from("finance_classification_rules").insert({
     user_id: user.id,
     name,
     active: true,
@@ -484,11 +484,11 @@ export async function createFinanceClassificationRule(formData: FormData) {
     set_scope: setScopeRaw || null,
     set_category_id: categoryId,
     set_source_id: sourceId,
-  });
+  }).select("id,name").single();
 
   if (error) throw new Error(error.message);
   revalidateFinance();
-  return { ok: true, message: "Reguła klasyfikacji dodana" };
+  return { ok: true, message: "Reguła klasyfikacji dodana", ruleId: data.id, ruleName: data.name };
 }
 
 export async function toggleFinanceClassificationRule(ruleId: string, active: boolean) {
