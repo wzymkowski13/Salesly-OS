@@ -1,6 +1,6 @@
-import { CalendarDays, Link2, ShieldCheck, Unlink, Users } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import Link from "next/link";
+import { CalendarDays, KeyRound, Link2, ShieldCheck, Unlink, UserRound, Users } from "lucide-react";
+import { requireAnyPermission } from "@/lib/permissions";
 import { getGoogleIntegration } from "@/lib/google";
 import { disconnectGoogle } from "@/lib/actions/google-study";
 import { SectionHeader } from "@/components/section-header";
@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
-  const user = await requireUser();
+  const access = await requireAnyPermission(["settings.integrations","admin.permissions"]);
   const params = await searchParams;
-  const supabase = await createClient();
-  const { data: profiles } = await supabase.from("profiles").select("id,email,full_name,is_active,created_at").order("created_at");
+  const user = access.user;
+  const profile = access.profile;
+
   const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
   let googleIntegration: Awaited<ReturnType<typeof getGoogleIntegration>> = null;
   try {
@@ -26,9 +27,30 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     {params.google === "error" && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">Nie udało się podłączyć Google. Sprawdź konfigurację OAuth i spróbuj ponownie.</div>}
 
     <div className="grid gap-5 xl:grid-cols-2">
-      <Card><CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><Users size={18}/></div><h2 className="font-bold text-[#30404b]">Użytkownicy</h2></div></CardHeader><CardContent className="space-y-3">{(profiles||[]).map((p:any)=><div key={p.id} className="flex items-center justify-between gap-4 rounded-xl border border-[#e7ecf1] bg-[#fbfcfe] p-3.5"><div><div className="text-sm font-bold text-[#3a4a55]">{p.full_name || p.email}</div><div className="mt-0.5 text-xs text-[#87949f]">{p.email}{p.id===user.id?" · to Ty":""}</div></div><Badge variant={p.is_active?"green":"red"}>{p.is_active?"Aktywny":"Wyłączony"}</Badge></div>)}</CardContent></Card>
+      <Card>
+        <CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><UserRound size={18}/></div><h2 className="font-bold text-[#30404b]">Twoje konto</h2></div></CardHeader>
+        <CardContent>
+          <div className="rounded-xl border border-[#e7ecf1] bg-[#fbfcfe] p-4">
+            <div className="flex flex-wrap items-center gap-2"><div className="text-sm font-bold text-[#3a4a55]">{profile?.full_name || user.email}</div><Badge variant={profile?.is_active ? "green" : "red"}>{profile?.is_active ? "Aktywne" : "Wyłączone"}</Badge>{access.isAdmin && <Badge variant="amber">Administrator</Badge>}</div>
+            <div className="mt-1 text-xs text-[#87949f]">{user.email}</div>
+            <div className="mt-3 text-xs leading-5 text-[#7f8d98]">{access.permissions.size} aktywnych uprawnień · środowisko startowe: {profile?.preferred_workspace === "work" ? "Służbowe" : "Prywatne"}</div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Card><CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><ShieldCheck size={18}/></div><h2 className="font-bold text-[#30404b]">Dostęp</h2></div></CardHeader><CardContent><div className="rounded-xl border border-[#e7ecf1] bg-[#fbfcfe] p-4"><div className="text-sm font-bold text-[#3a4a55]">Google + whitelist</div><div className="mt-1 text-xs leading-5 text-[#7f8d98]">Dostęp do panelu mają wyłącznie aktywne, zatwierdzone konta.</div></div></CardContent></Card>
+      {access.isAdmin ? <Card>
+        <CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-amber-50 p-2 text-amber-600"><Users size={18}/></div><h2 className="font-bold text-[#30404b]">Administracja dostępem</h2></div></CardHeader>
+        <CardContent>
+          <div className="rounded-xl border border-[#e7ecf1] bg-[#fbfcfe] p-4">
+            <div className="text-sm font-bold text-[#3a4a55]">Użytkownicy i uprawnienia</div>
+            <div className="mt-1 text-xs leading-5 text-[#7f8d98]">Przygotuj dostęp dla nowej osoby, aktywuj lub wyłącz konto i kontroluj widoczne moduły.</div>
+            <Link href="/settings/users" className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-[#568deb] px-4 text-sm font-semibold text-white transition hover:bg-[#477ddd]"><KeyRound size={15}/> Zarządzaj dostępem</Link>
+          </div>
+        </CardContent>
+      </Card> : <Card>
+        <CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><ShieldCheck size={18}/></div><h2 className="font-bold text-[#30404b]">Dostęp</h2></div></CardHeader>
+        <CardContent><div className="rounded-xl border border-[#e7ecf1] bg-[#fbfcfe] p-4"><div className="text-sm font-bold text-[#3a4a55]">Zakres kontrolowany przez administratora</div><div className="mt-1 text-xs leading-5 text-[#7f8d98]">W centrum i nawigacji widzisz tylko moduły przypisane do Twojego konta.</div></div></CardContent>
+      </Card>}
 
       <Card className="xl:col-span-2">
         <CardHeader><div className="flex items-center gap-2.5"><div className="rounded-xl bg-[#eef3ff] p-2 text-[#4f78e7]"><CalendarDays size={18}/></div><div><h2 className="font-bold text-[#30404b]">Google Workspace</h2><div className="text-xs text-[#83909b]">Calendar + Google Docs / Drive</div></div></div></CardHeader>
@@ -42,7 +64,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <div className="mt-1 text-xs leading-5 text-[#7f8d98]">
                 {googleIntegration
                   ? <>Konto: <span className="font-semibold text-[#566874]">{googleIntegration.connected_email || "Google"}</span>. OS może importować wydarzenia z kalendarza i tworzyć dokumenty w Twoim Dysku.</>
-                  : "Podłącz konto, aby importować plan studiów z Google Calendar i tworzyć notatki Google Docs z poziomu przedmiotu."}
+                  : "Podłącz konto, aby importować wydarzenia i tworzyć notatki Google Docs z poziomu Salesly OS."}
               </div>
             </div>
 
