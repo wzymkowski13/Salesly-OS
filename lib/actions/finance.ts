@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parseFinanceFile, type ParsedFinanceRow } from "@/lib/finance-import";
+import { applyFinanceClassificationRules, type FinanceClassificationRule } from "@/lib/finance-rules";
 
 function textValue(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
@@ -204,16 +205,43 @@ export async function previewFinanceImport(formData: FormData) {
     for (const row of data || []) if (row.import_hash) existing.add(String(row.import_hash));
   }
 
+  const { data: rules, error: rulesError } = await supabase
+    .from("finance_classification_rules")
+    .select("id,name,active,priority,match_field,match_operator,match_value,applies_to_type,set_scope,set_category_id,set_source_id")
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .order("priority", { ascending: true });
+  if (rulesError) throw new Error(rulesError.message);
+
+  const classifiedRows = parsed.rows.map(row => {
+    const classified = applyFinanceClassificationRules(
+      {
+        transaction_type: row.transaction_type,
+        description: row.description,
+        scope: row.scope,
+        category_id: row.category_id,
+        source_id: row.source_id,
+      },
+      (rules || []) as FinanceClassificationRule[]
+    );
+
+    return {
+      ...row,
+      ...classified.row,
+      duplicate: existing.has(row.import_hash),
+      include: !existing.has(row.import_hash),
+      classification_rule_id: classified.matchedRule?.id || null,
+      classification_rule_name: classified.matchedRule?.name || null,
+    };
+  });
+
   return {
     ok: true,
     fileName: parsed.fileName,
     detected: parsed.detected,
-    rows: parsed.rows.map(row => ({
-      ...row,
-      duplicate: existing.has(row.import_hash),
-      include: !existing.has(row.import_hash),
-    })),
-    duplicateCount: parsed.rows.filter(row => existing.has(row.import_hash)).length,
+    rows: classifiedRows,
+    duplicateCount: classifiedRows.filter(row => row.duplicate).length,
+    classifiedCount: classifiedRows.filter(row => row.classification_rule_id).length,
   };
 }
 
@@ -221,7 +249,7 @@ type CommitFinanceImportRow = Pick<
   ParsedFinanceRow,
   "occurred_on" | "transaction_type" | "amount" | "description" | "scope" |
   "category_id" | "source_id" | "include" | "import_hash" | "raw_data"
->;
+> & { classification_rule_id?: string | null };
 
 export async function commitFinanceImport(formData: FormData) {
   const user = await requireUser();
@@ -256,6 +284,13 @@ export async function commitFinanceImport(formData: FormData) {
 
   const categoryIds = new Set((categories || []).map(row => String(row.id)));
   const sourceIds = new Set((sources || []).map(row => String(row.id)));
+
+  const { data: classificationRules, error: classificationRulesError } = await supabase
+    .from("finance_classification_rules")
+    .select("id")
+    .eq("user_id", user.id);
+  if (classificationRulesError) throw new Error(classificationRulesError.message);
+  const classificationRuleIds = new Set((classificationRules || []).map(row => String(row.id)));
 
   const hashes = selected.map(row => String(row.import_hash || "")).filter(Boolean);
   const existing = new Set<string>();
@@ -317,6 +352,9 @@ export async function commitFinanceImport(formData: FormData) {
         import_hash: String(row.import_hash),
         import_source: "bank",
         raw_data: row.raw_data || null,
+        classification_rule_id: row.classification_rule_id && classificationRuleIds.has(String(row.classification_rule_id))
+          ? String(row.classification_rule_id)
+          : null,
       };
     });
 
@@ -402,4 +440,81 @@ export async function saveFinanceTaxProfile(formData: FormData) {
     message: "Profil finansowy zapisany",
     description: "Estymacja netto została przeliczona na nowych założeniach.",
   };
+}
+
+
+export async function createFinanceClassificationRule(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const name = textValue(formData, "name");
+  const matchValue = textValue(formData, "match_value");
+  const matchOperator = textValue(formData, "match_operator") || "contains";
+  const appliesToTypeRaw = textValue(formData, "applies_to_type");
+  const setScopeRaw = textValue(formData, "set_scope");
+  const categoryId = optionalText(formData, "set_category_id");
+  const sourceId = optionalText(formData, "set_source_id");
+  const priority = Math.max(0, Math.min(10000, Number(textValue(formData, "priority") || "100")));
+
+  if (!name) throw new Error("Nazwa reguły jest wymagana.");
+  if (matchValue.length < 2) throw new Error("Fraza reguły musi mieć co najmniej 2 znaki.");
+  if (!["contains","starts_with","exact"].includes(matchOperator)) throw new Error("Nieprawidłowy operator dopasowania.");
+  if (appliesToTypeRaw && !["income","expense"].includes(appliesToTypeRaw)) throw new Error("Nieprawidłowy typ transakcji.");
+  if (setScopeRaw && !["business","private"].includes(setScopeRaw)) throw new Error("Nieprawidłowy obszar.");
+
+  if (categoryId) {
+    const { data } = await supabase.from("finance_categories").select("id").eq("id", categoryId).eq("user_id", user.id).maybeSingle();
+    if (!data) throw new Error("Wybrana kategoria nie należy do użytkownika.");
+  }
+  if (sourceId) {
+    const { data } = await supabase.from("finance_sources").select("id").eq("id", sourceId).eq("user_id", user.id).maybeSingle();
+    if (!data) throw new Error("Wybrane źródło nie należy do użytkownika.");
+  }
+  if (!setScopeRaw && !categoryId && !sourceId) throw new Error("Reguła musi ustawiać obszar, kategorię lub źródło.");
+
+  const { error } = await supabase.from("finance_classification_rules").insert({
+    user_id: user.id,
+    name,
+    active: true,
+    priority: Number.isFinite(priority) ? priority : 100,
+    match_field: "description",
+    match_operator: matchOperator,
+    match_value: matchValue,
+    applies_to_type: appliesToTypeRaw || null,
+    set_scope: setScopeRaw || null,
+    set_category_id: categoryId,
+    set_source_id: sourceId,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return { ok: true, message: "Reguła klasyfikacji dodana" };
+}
+
+export async function toggleFinanceClassificationRule(ruleId: string, active: boolean) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("finance_classification_rules")
+    .update({ active })
+    .eq("id", ruleId)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return { ok: true, message: active ? "Reguła włączona" : "Reguła wyłączona" };
+}
+
+export async function deleteFinanceClassificationRule(ruleId: string) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("finance_classification_rules")
+    .delete()
+    .eq("id", ruleId)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+  return { ok: true, message: "Reguła usunięta" };
 }
