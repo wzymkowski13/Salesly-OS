@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAllowedEmail } from "@/lib/auth";
-import { ALL_PERMISSION_KEYS } from "@/lib/permissions";
+import { ALL_PERMISSION_KEYS, defaultRouteForPermissions } from "@/lib/permissions";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -114,6 +114,11 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }
 
-  const preferred = existingProfile.preferred_workspace === "work" ? "/dashboard" : "/home";
+  const { data: permissionRows } = await admin
+    .from("user_permissions")
+    .select("permission_key")
+    .eq("user_id", user.id);
+  const permissions = new Set((permissionRows || []).map(row => String(row.permission_key)));
+  const preferred = defaultRouteForPermissions(permissions, existingProfile.preferred_workspace);
   return NextResponse.redirect(`${origin}${preferred}`);
 }
