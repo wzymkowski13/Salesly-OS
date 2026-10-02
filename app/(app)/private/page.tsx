@@ -105,6 +105,7 @@ export default async function PrivateDashboardPage() {
     { data: upcomingClasses },
     { data: exams },
     { data: tasks },
+    taskCountResult,
     financeResult,
     taxProfileResult,
     recurringResult,
@@ -159,6 +160,12 @@ export default async function PrivateDashboardPage() {
       .neq("status", "done")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(5),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_to", user.id)
+      .in("scope", ["private","study"])
+      .neq("status", "done"),
     supabase
       .from("finance_transactions")
       .select("transaction_type,scope,amount,occurred_on")
@@ -280,7 +287,7 @@ export default async function PrivateDashboardPage() {
     })),
   ].sort((a,b) => a.sort.localeCompare(b.sort));
 
-  const openTasksCount = (tasks || []).length;
+  const openTasksCount = taskCountResult.count ?? (tasks || []).length;
   const todayCount = agenda.length;
 
   return <div className="space-y-6">
