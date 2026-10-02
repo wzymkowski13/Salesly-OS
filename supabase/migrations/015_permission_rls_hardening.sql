@@ -63,6 +63,8 @@ using (
     public.has_permission('work.crm')
     or public.has_permission('work.dashboard')
     or public.has_permission('work.renewals')
+    or public.has_permission('work.tasks')
+    or public.has_permission('work.calendar')
   )
 );
 
