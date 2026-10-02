@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { exchangeGoogleCode } from "@/lib/google";
+import { getUserAccess, permissionSetAllows } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL("/login", origin));
+
+  const access = await getUserAccess(user.id);
+  if (!access.profile?.is_active || !permissionSetAllows(access.permissions, "settings.integrations")) {
+    return NextResponse.redirect(new URL("/access-denied?permission=settings.integrations", origin));
+  }
 
   try {
     const tokens = await exchangeGoogleCode(code, origin);
