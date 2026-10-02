@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import { requireAnyPermission, requirePermission } from "@/lib/permissions";
 import { googleApiFetch, getGoogleIntegration } from "@/lib/google";
 import { parseStudyIcs } from "@/lib/ics";
 import { warsawLocalToUtc } from "@/lib/date";
@@ -42,7 +42,7 @@ function revalidateStudy(subjectId: string) {
 }
 
 export async function disconnectGoogle() {
-  const user = await requireUser();
+  const { user } = await requireAnyPermission(["settings.integrations","private.study"]);
   const admin = createAdminClient();
   const integration = await getGoogleIntegration(user.id);
 
@@ -62,7 +62,7 @@ export async function disconnectGoogle() {
 }
 
 export async function importStudyFromGoogle(subjectId: string, formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const subject = await verifySubject(user.id, subjectId);
   const { start, end } = studyRange(formData);
   const query = textValue(formData, "query");
@@ -117,7 +117,7 @@ export async function importStudyFromGoogle(subjectId: string, formData: FormDat
 }
 
 export async function importStudyIcs(subjectId: string, formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const subject = await verifySubject(user.id, subjectId);
   const { start, end } = studyRange(formData);
   const classType = textValue(formData, "class_type") || "lecture";
@@ -153,7 +153,7 @@ export async function importStudyIcs(subjectId: string, formData: FormData) {
 }
 
 export async function createStudyGoogleDoc(subjectId: string, classId: string | null, formData: FormData) {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const subject = await verifySubject(user.id, subjectId);
   let title = textValue(formData, "title");
 
@@ -213,7 +213,7 @@ export async function createStudyGoogleDoc(subjectId: string, classId: string | 
 }
 
 export async function deleteStudyNote(noteId: string, subjectId: string) {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.study");
   const supabase = await createClient();
   const { error } = await supabase.from("study_notes").delete().eq("id", noteId).eq("user_id", user.id);
   if (error) throw new Error(error.message);
