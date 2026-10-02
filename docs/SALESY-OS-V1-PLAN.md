@@ -291,10 +291,21 @@ Miesiąc / kwartał / rok:
 - efektywność dziś
 
 ### Etap F — Users & permissions UI
-- dodawanie użytkowników
-- aktywacja/dezaktywacja
-- przypisywanie permission keys
-- launcher/sidebar respektujący uprawnienia
+- [x] dodawanie użytkowników przez przygotowany dostęp e-mail
+- [x] logowanie zaproszonych osób bez ręcznego ALLOWED_EMAILS
+- [x] aktywacja / dezaktywacja kont
+- [x] przypisywanie permission keys
+- [x] granularne uprawnienia work / private / tools / admin
+- [x] launcher respektujący uprawnienia
+- [x] sidebar i mobile nav respektujące uprawnienia
+- [x] workspace switcher respektujący uprawnienia
+- [x] route guards per moduł
+- [x] onboarding pierwszego logowania
+- [x] preferowane środowisko startowe
+- [x] wybór pierwszej faktycznie dostępnej strony po logowaniu
+- [x] panel /settings/users dla administratora
+- [x] RLS Supabase respektujący permission keys
+- [x] ponowna weryfikacja permissions w OAuth USOS / Google
 
 ## 11. Kryteria foundation v1
 
