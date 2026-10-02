@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { pl } from "date-fns/locale";
-import { BarChart3, Building2, Calculator, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { BarChart3, Building2, Calculator, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, Sparkles, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw } from "@/lib/date";
-import { createFinanceCategory, createFinanceSource, deleteFinanceTransaction, saveFinanceTaxProfile, updateFinanceTransaction } from "@/lib/actions/finance";
+import { createFinanceCategory, createFinanceClassificationRule, createFinanceSource, deleteFinanceClassificationRule, deleteFinanceTransaction, saveFinanceTaxProfile, toggleFinanceClassificationRule, updateFinanceTransaction } from "@/lib/actions/finance";
 import { FinanceTransactionEditForm, FinanceTransactionForm } from "@/components/finance-transaction-form";
 import { FinanceImportPanel } from "@/components/finance-import-panel";
 import { SectionHeader } from "@/components/section-header";
@@ -61,6 +61,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     { data: importBatches, error: importBatchesError },
     taxProfileResult,
     analyticsResult,
+    classificationRulesResult,
   ] = await Promise.all([
     supabase
       .from("finance_transactions")
@@ -80,6 +81,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       .gte("occurred_on", format(startOfMonth(addMonths(focus, -12)), "yyyy-MM-dd"))
       .lte("occurred_on", to)
       .order("occurred_on"),
+    supabase.from("finance_classification_rules")
+      .select("id,name,active,priority,match_operator,match_value,applies_to_type,set_scope,set_category_id,set_source_id,created_at")
+      .eq("user_id", user.id)
+      .order("priority", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   if (transactionsError || sourcesError || categoriesError) {
@@ -97,6 +103,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   const importReady = !importBatchesError;
   const taxReady = !taxProfileResult.error;
+  const rulesReady = !classificationRulesResult.error;
+  const classificationRules = classificationRulesResult.data || [];
   const taxProfile = taxProfileResult.data as any;
   const analyticsRows = analyticsResult.data || [];
   const rows = transactions || [];
@@ -217,6 +225,50 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>
     <div className="md:col-span-2 flex justify-end"><Button type="submit">Zapisz założenia</Button></div>
   </ActionForm> : <div className="text-sm text-amber-700">Uruchom migrację 011, aby włączyć kalkulator netto.</div>;
+
+  const addRuleForm = rulesReady ? <ActionForm
+    action={createFinanceClassificationRule}
+    successMessage="Reguła klasyfikacji dodana"
+    resetOnSuccess
+    className="grid gap-4 md:grid-cols-2"
+  >
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Nazwa reguły</label>
+      <Input name="name" required placeholder="Np. Meta Ads → Marketing"/>
+    </div>
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Gdy opis zawiera</label>
+      <Input name="match_value" required minLength={2} placeholder="Np. META, OPENAI, ZUS"/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Dopasowanie</label>
+      <Select name="match_operator" defaultValue="contains"><option value="contains">Zawiera</option><option value="starts_with">Zaczyna się od</option><option value="exact">Dokładnie równe</option></Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ transakcji</label>
+      <Select name="applies_to_type" defaultValue=""><option value="">Dowolny</option><option value="expense">Koszt</option><option value="income">Przychód</option></Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Ustaw obszar</label>
+      <Select name="set_scope" defaultValue=""><option value="">Nie zmieniaj</option><option value="business">Firmowe</option><option value="private">Prywatne</option></Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Priorytet</label>
+      <Input name="priority" type="number" min="0" max="10000" defaultValue="100"/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Kategoria</label>
+      <Select name="set_category_id" defaultValue=""><option value="">Nie ustawiaj</option>{(categories || []).map((category:any) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Źródło przychodu</label>
+      <Select name="set_source_id" defaultValue=""><option value="">Nie ustawiaj</option>{(sources || []).map((source:any) => <option key={source.id} value={source.id}>{source.name}</option>)}</Select>
+    </div>
+    <div className="md:col-span-2 rounded-xl bg-[#edf3ff] px-3 py-2 text-xs leading-5 text-[#58709f]">
+      Reguły są sprawdzane od najniższego priorytetu. Pierwsza pasująca reguła wygrywa.
+    </div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit"><Sparkles size={15}/> Dodaj regułę</Button></div>
+  </ActionForm> : <div className="text-sm text-amber-700">Uruchom migrację 013, aby włączyć reguły automatycznej klasyfikacji.</div>;
 
   const addCategoryForm = <ActionForm
     action={createFinanceCategory}
@@ -364,6 +416,35 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </div>)}
       </CardContent>
     </Card>}
+
+    <Card className={rulesReady && classificationRules.length ? "border-[#d9e5fb]" : ""}>
+      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-[#edf3ff] p-2 text-[#568deb]"><Sparkles size={17}/></div>
+          <div><h2 className="font-bold text-[#2a3944]">Reguły automatycznej klasyfikacji</h2><div className="text-xs text-[#83909b]">OS rozpoznaje powtarzalne transakcje już na podglądzie importu</div></div>
+        </div>
+        <FormDisclosure label="Dodaj regułę" compact align="right">{addRuleForm}</FormDisclosure>
+      </CardHeader>
+      <CardContent>
+        {rulesReady ? <div className="space-y-2">
+          {(classificationRules || []).map((rule:any) => {
+            const categoryName = (categories || []).find((item:any) => item.id === rule.set_category_id)?.name;
+            const sourceName = (sources || []).find((item:any) => item.id === rule.set_source_id)?.name;
+            return <div key={rule.id} className={`flex flex-col gap-3 rounded-xl border px-3 py-3 sm:flex-row sm:items-center sm:justify-between ${rule.active ? "border-[#e4eaf1] bg-white" : "border-[#edf0f3] bg-[#fafbfc] opacity-65"}`}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><div className="truncate text-sm font-bold text-[#40515d]">{rule.name}</div><Badge variant={rule.active ? "green" : "neutral"}>{rule.active ? "Aktywna" : "Wyłączona"}</Badge><Badge variant="neutral">P{rule.priority}</Badge></div>
+                <div className="mt-1 text-xs leading-5 text-[#81909b]">Opis {rule.match_operator === "exact" ? "=" : rule.match_operator === "starts_with" ? "zaczyna się od" : "zawiera"} „{rule.match_value}” → {[rule.set_scope === "business" ? "firmowe" : rule.set_scope === "private" ? "prywatne" : null, categoryName, sourceName].filter(Boolean).join(" · ") || "—"}</div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-1.5">
+                <ActionForm action={toggleFinanceClassificationRule.bind(null, rule.id, !rule.active)} successMessage={rule.active ? "Reguła wyłączona" : "Reguła włączona"}><Button type="submit" size="sm" variant="secondary">{rule.active ? "Wyłącz" : "Włącz"}</Button></ActionForm>
+                <ActionForm action={deleteFinanceClassificationRule.bind(null, rule.id)} successMessage="Reguła usunięta"><Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">Usuń</Button></ActionForm>
+              </div>
+            </div>;
+          })}
+          {!(classificationRules || []).length && <EmptyState title="Brak reguł" description="Dodaj pierwszą regułę albo utwórz ją przy konkretnej transakcji w podglądzie importu."/>}
+        </div> : <div className="rounded-xl bg-amber-50 px-3 py-3 text-sm text-amber-800">Uruchom migrację 013, aby włączyć reguły klasyfikacji.</div>}
+      </CardContent>
+    </Card>
 
     <Card>
       <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
