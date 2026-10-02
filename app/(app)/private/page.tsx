@@ -15,7 +15,7 @@ import {
   Repeat2,
   WalletCards,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw, warsawDayRange } from "@/lib/date";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -87,7 +87,7 @@ function classCode(value?: string | null) {
 }
 
 export default async function PrivateDashboardPage() {
-  const user = await requireUser();
+  const { user } = await requirePermission("private.dashboard");
   const supabase = await createClient();
   const today = todayInWarsaw();
   const now = new Date().toISOString();
