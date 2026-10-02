@@ -89,17 +89,32 @@ export async function getUserAccess(userId?: string) {
   const user = userId ? { id: userId } : await requireUser();
   const admin = createAdminClient();
 
-  const [{ data: profile }, { data: permissionRows }] = await Promise.all([
-    admin
+  const profileResult = await admin
+    .from("profiles")
+    .select("id,email,full_name,is_active,onboarding_completed_at,preferred_workspace,created_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  let profile = profileResult.data as any;
+  if (profileResult.error) {
+    const legacyProfile = await admin
       .from("profiles")
-      .select("id,email,full_name,is_active,onboarding_completed_at,preferred_workspace,created_at")
+      .select("id,email,full_name,is_active,created_at")
       .eq("id", user.id)
-      .maybeSingle(),
-    admin
-      .from("user_permissions")
-      .select("permission_key")
-      .eq("user_id", user.id),
-  ]);
+      .maybeSingle();
+    profile = legacyProfile.data
+      ? {
+          ...legacyProfile.data,
+          onboarding_completed_at: legacyProfile.data.created_at,
+          preferred_workspace: null,
+        }
+      : null;
+  }
+
+  const { data: permissionRows } = await admin
+    .from("user_permissions")
+    .select("permission_key")
+    .eq("user_id", user.id);
 
   const permissions = new Set((permissionRows || []).map(row => String(row.permission_key)));
   return {
