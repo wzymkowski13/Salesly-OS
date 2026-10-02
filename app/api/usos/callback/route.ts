@@ -7,6 +7,7 @@ import {
   usosGetJson,
 } from "@/lib/usos";
 import { syncUsosForUser } from "@/lib/usos-sync";
+import { getUserAccess, permissionSetAllows } from "@/lib/permissions";
 
 export const maxDuration = 60;
 
@@ -21,6 +22,11 @@ export async function GET(request: NextRequest) {
 
   if (!user || !state || state.userId !== user.id || !oauthToken || !verifier || oauthToken !== state.requestToken) {
     return NextResponse.redirect(new URL("/private/study?usos=callback_error", url.origin));
+  }
+
+  const accessState = await getUserAccess(user.id);
+  if (!accessState.profile?.is_active || !permissionSetAllows(accessState.permissions, "private.study")) {
+    return NextResponse.redirect(new URL("/access-denied?permission=private.study", url.origin));
   }
 
   try {
