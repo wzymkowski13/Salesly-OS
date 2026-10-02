@@ -7,7 +7,7 @@ import { signOut } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 
-export function Topbar({ email, unread }: { email: string; unread: number }) {
+export function Topbar({ email, unread, permissions }: { email: string; unread: number; permissions: string[] }) {
   const pathname = usePathname();
   const initial = (email?.[0] || "S").toUpperCase();
   const showCrmSearch = !pathname.startsWith("/private") && pathname !== "/home";
@@ -24,7 +24,7 @@ export function Topbar({ email, unread }: { email: string; unread: number }) {
       </Link>}
     </div>
     <div className="flex items-center gap-2">
-      <WorkspaceSwitcher pathname={pathname}/>
+      <WorkspaceSwitcher pathname={pathname} permissions={permissions}/>
       <Link href="/notifications" className="relative flex h-10 w-10 items-center justify-center rounded-xl text-[#647582] transition hover:bg-[#eef3f8] hover:text-[#263641]">
         <Bell size={19}/>
         {unread > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-[#568deb] px-1 text-center text-[9px] font-bold leading-4 text-white ring-2 ring-white">{unread > 9 ? "9+" : unread}</span>}
