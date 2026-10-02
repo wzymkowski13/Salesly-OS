@@ -85,6 +85,40 @@ export function hasAnyPermission(permissionSet: Set<string>, permissions: string
   return permissions.some(permission => permissionSetAllows(permissionSet, permission));
 }
 
+export function defaultRouteForPermissions(permissionSet: Set<string>, preferredWorkspace?: string | null) {
+  const workRoutes: Array<[string,string]> = [
+    ["/dashboard","work.dashboard"],
+    ["/crm","work.crm"],
+    ["/tasks","work.tasks"],
+    ["/calendar","work.calendar"],
+    ["/renewals","work.renewals"],
+    ["/notifications","work.notifications"],
+  ];
+  const privateRoutes: Array<[string,string]> = [
+    ["/private","private.dashboard"],
+    ["/private/study","private.study"],
+    ["/private/finance","private.finance"],
+    ["/private/tasks","private.tasks"],
+    ["/private/calendar","private.calendar"],
+    ["/private/documents","private.documents"],
+  ];
+
+  const firstAllowed = (routes: Array<[string,string]>) =>
+    routes.find(([,permission]) => permissionSetAllows(permissionSet, permission))?.[0] || null;
+
+  if (preferredWorkspace === "work") {
+    return firstAllowed(workRoutes) || firstAllowed(privateRoutes) || (permissionSetAllows(permissionSet, "leadfactory.access") ? "/lead-factory" : "/home");
+  }
+
+  if (preferredWorkspace === "private") {
+    return firstAllowed(privateRoutes) || firstAllowed(workRoutes) || (permissionSetAllows(permissionSet, "leadfactory.access") ? "/lead-factory" : "/home");
+  }
+
+  return firstAllowed(privateRoutes)
+    || firstAllowed(workRoutes)
+    || (permissionSetAllows(permissionSet, "leadfactory.access") ? "/lead-factory" : "/home");
+}
+
 export async function getUserAccess(userId?: string) {
   const user = userId ? { id: userId } : await requireUser();
   const admin = createAdminClient();
