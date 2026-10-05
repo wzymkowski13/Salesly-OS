@@ -291,7 +291,7 @@ Miesiąc / kwartał / rok:
 - [x] efektywność dziś na dashboardzie służbowym
 - [x] timeout / cache / miękki fallback bez blokowania dashboardu
 - [x] kontrakt endpointu i zmienne środowiskowe
-- [ ] endpoint GET /api/os-summary po stronie salesly.pl/panel (repo panelu niepodłączone do obecnej integracji GitHub)
+- [x] endpoint GET /api/os-summary po stronie salesly.pl/panel
 
 ### Etap F — Users & permissions UI
 - [x] dodawanie użytkowników przez przygotowany dostęp e-mail
@@ -385,7 +385,7 @@ Foundation jest gotowy, gdy:
 
 
 ### Etap G — Performance & stability
-- [ ] baseline czasu odpowiedzi głównych modułów na docelowym deployu
+- [ ] baseline czasu odpowiedzi głównych modułów na docelowym deployu (Speed Insights włączone — zbieramy dane)
 - [x] deduplikacja auth lookup per request
 - [x] deduplikacja i równoległe pobieranie profilu / permissions
 - [x] równoległe ładowanie app shell
