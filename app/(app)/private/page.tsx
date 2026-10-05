@@ -99,10 +99,9 @@ export default async function PrivateDashboardPage() {
   const recurringFrom = format(addMonths(monthDate, -2), "yyyy-MM-dd");
 
   const [
-    { data: todayClasses },
+    classesResult,
     { data: todayEvents },
     { data: todayTasks },
-    { data: upcomingClasses },
     { data: exams },
     { data: tasks },
     taskCountResult,
@@ -118,9 +117,9 @@ export default async function PrivateDashboardPage() {
       .select("id,subject_id,class_type,title,room,building,starts_at,ends_at,attendance_status,study_subjects(name)")
       .eq("user_id", user.id)
       .gte("starts_at", todayStart)
-      .lte("starts_at", todayEnd)
       .neq("attendance_status", "cancelled")
-      .order("starts_at"),
+      .order("starts_at")
+      .limit(32),
     supabase
       .from("events")
       .select("id,title,event_type,starts_at,ends_at,scope")
@@ -136,14 +135,6 @@ export default async function PrivateDashboardPage() {
       .eq("due_date", today)
       .neq("status", "done")
       .order("due_time", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("study_classes")
-      .select("id,subject_id,class_type,title,room,starts_at,attendance_status,study_subjects(name)")
-      .eq("user_id", user.id)
-      .gte("starts_at", now)
-      .neq("attendance_status","cancelled")
-      .order("starts_at")
-      .limit(4),
     supabase
       .from("study_subjects")
       .select("id,name,pass_type,pass_date")
@@ -206,6 +197,10 @@ export default async function PrivateDashboardPage() {
       .limit(1)
       .maybeSingle(),
   ]);
+
+  const classRows = classesResult.data || [];
+  const todayClasses = classRows.filter((item:any) => item.starts_at <= todayEnd);
+  const upcomingClasses = classRows.filter((item:any) => item.starts_at >= now).slice(0, 4);
 
   const financeRows = financeResult.data || [];
   const financeReady = !financeResult.error;
