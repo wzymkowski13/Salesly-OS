@@ -107,6 +107,7 @@ export default async function PrivateDashboardPage() {
     taskCountResult,
     financeResult,
     taxProfileResult,
+    settlementResult,
     recurringResult,
     attendanceResult,
     syncResult,
@@ -159,7 +160,7 @@ export default async function PrivateDashboardPage() {
       .neq("status", "done"),
     supabase
       .from("finance_transactions")
-      .select("transaction_type,scope,amount,occurred_on")
+      .select("transaction_type,scope,amount,occurred_on,finance_categories(name)")
       .eq("user_id", user.id)
       .gte("occurred_on", monthFrom)
       .lte("occurred_on", monthTo),
@@ -167,6 +168,12 @@ export default async function PrivateDashboardPage() {
       .from("finance_tax_profiles")
       .select("tax_method,tax_rate,social_zus_monthly,health_contribution_rate")
       .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("finance_monthly_settlements")
+      .select("actual_income_tax,actual_social_zus,actual_health_contribution,actual_vat,other_public_charges,unrecorded_costs,unrecorded_income,confirmed_at")
+      .eq("user_id", user.id)
+      .eq("period_month", `${today.slice(0,7)}-01`)
       .maybeSingle(),
     supabase
       .from("finance_transactions")
@@ -206,6 +213,7 @@ export default async function PrivateDashboardPage() {
   const financeReady = !financeResult.error;
   const taxProfile = taxProfileResult.data as any;
   const taxReady = !taxProfileResult.error && Boolean(taxProfile);
+  const settlement = settlementResult.data as any;
 
   const monthIncome = financeRows
     .filter((row:any) => row.transaction_type === "income")
@@ -234,6 +242,26 @@ export default async function PrivateDashboardPage() {
   const estimatedTax = taxReady ? taxableBase * taxRate / 100 : 0;
   const estimatedNet = taxReady
     ? businessIncome - businessExpenses - socialZus - healthContribution - estimatedTax
+    : null;
+
+  const settlementRecordedExpenses = financeRows
+    .filter((row:any) =>
+      row.transaction_type === "expense"
+      && row.scope === "business"
+      && ["Podatki","ZUS"].includes(String(row.finance_categories?.name || ""))
+    )
+    .reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+  const operatingBusinessExpenses = Math.max(0, businessExpenses - settlementRecordedExpenses);
+  const confirmedNet = settlement
+    ? businessIncome
+      + Number(settlement.unrecorded_income || 0)
+      - operatingBusinessExpenses
+      - Number(settlement.unrecorded_costs || 0)
+      - Number(settlement.actual_income_tax || 0)
+      - Number(settlement.actual_social_zus || 0)
+      - Number(settlement.actual_health_contribution || 0)
+      - Number(settlement.actual_vat || 0)
+      - Number(settlement.other_public_charges || 0)
     : null;
 
   const attendanceRows = attendanceResult.data || [];
@@ -341,10 +369,10 @@ export default async function PrivateDashboardPage() {
         </CardHeader>
         <CardContent>
           {financeReady ? <div className="space-y-4">
-            <div className="rounded-2xl bg-emerald-50 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.13em] text-emerald-700">Szacowane netto firmy</div>
-              <div className="mt-1 text-3xl font-black tracking-[-0.04em] text-emerald-700">{estimatedNet === null ? "—" : money(estimatedNet)}</div>
-              <div className="mt-1 text-xs text-emerald-700/75">{estimatedNet === null ? "Ustaw założenia podatkowe w Finansach." : `zdrowotna ${healthRate}% dochodu · podatek ${taxRate}%`}</div>
+            <div className={`rounded-2xl p-4 ${confirmedNet !== null ? "bg-emerald-50" : "bg-amber-50"}`}>
+              <div className={`text-[10px] font-bold uppercase tracking-[0.13em] ${confirmedNet !== null ? "text-emerald-700" : "text-amber-700"}`}>{confirmedNet !== null ? "Zatwierdzone netto firmy" : "Prognoza netto firmy"}</div>
+              <div className={`mt-1 text-3xl font-black tracking-[-0.04em] ${confirmedNet !== null ? "text-emerald-700" : "text-amber-700"}`}>{confirmedNet !== null ? money(confirmedNet) : estimatedNet === null ? "—" : money(estimatedNet)}</div>
+              <div className={`mt-1 text-xs ${confirmedNet !== null ? "text-emerald-700/75" : "text-amber-700/80"}`}>{confirmedNet !== null ? `rozliczenie zatwierdzone ${fmtStatusDate(settlement.confirmed_at)}` : estimatedNet === null ? "Ustaw założenia podatkowe w Finansach." : "wynik oczekuje na zatwierdzenie rzeczywistym rozliczeniem"}</div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Przychody</div><div className="mt-1 font-bold text-[#40515d]">{money(monthIncome)}</div></div>
