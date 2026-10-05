@@ -21,8 +21,8 @@ export async function CallCenterKpis() {
     />
     <StatCard
       label="Efektywność dziś"
-      value={summary.efficiencyToday === null ? "—" : `${(summary.efficiencyToday * 100).toFixed(1)}%`}
-      hint={hint(summary.status)}
+      value={summary.efficiencyToday === null ? "—" : summary.efficiencyToday.toFixed(2)}
+      hint={summary.status === "ok" ? "leadów / RBH" : hint(summary.status)}
       icon={Gauge}
       tone="blue"
     />
@@ -32,6 +32,6 @@ export async function CallCenterKpis() {
 export function CallCenterKpisSkeleton() {
   return <>
     <StatCard label="Leady dziś" value="…" hint="ładowanie panelu" icon={Target} tone="green"/>
-    <StatCard label="Efektywność dziś" value="…" hint="ładowanie panelu" icon={Gauge} tone="blue"/>
+    <StatCard label="Efektywność dziś" value="…" hint="leadów / RBH" icon={Gauge} tone="blue"/>
   </>;
 }
