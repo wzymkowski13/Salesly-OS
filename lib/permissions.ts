@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -119,14 +120,13 @@ export function defaultRouteForPermissions(permissionSet: Set<string>, preferred
     || (permissionSetAllows(permissionSet, "leadfactory.access") ? "/lead-factory" : "/home");
 }
 
-export async function getUserAccess(userId?: string) {
-  const user = userId ? { id: userId } : await requireUser();
+const getUserAccessCached = cache(async (userId: string) => {
   const admin = createAdminClient();
 
   const profileResult = await admin
     .from("profiles")
     .select("id,email,full_name,is_active,onboarding_completed_at,preferred_workspace,created_at")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   let profile = profileResult.data as any;
@@ -134,7 +134,7 @@ export async function getUserAccess(userId?: string) {
     const legacyProfile = await admin
       .from("profiles")
       .select("id,email,full_name,is_active,created_at")
-      .eq("id", user.id)
+      .eq("id", userId)
       .maybeSingle();
     profile = legacyProfile.data
       ? {
@@ -148,7 +148,7 @@ export async function getUserAccess(userId?: string) {
   const { data: permissionRows } = await admin
     .from("user_permissions")
     .select("permission_key")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   const permissions = new Set((permissionRows || []).map(row => String(row.permission_key)));
   return {
@@ -156,6 +156,11 @@ export async function getUserAccess(userId?: string) {
     permissions,
     isAdmin: permissionSetAllows(permissions, "admin.permissions"),
   };
+});
+
+export async function getUserAccess(userId?: string) {
+  const resolvedUserId = userId || (await requireUser()).id;
+  return getUserAccessCached(resolvedUserId);
 }
 
 export async function requireActiveUser() {
