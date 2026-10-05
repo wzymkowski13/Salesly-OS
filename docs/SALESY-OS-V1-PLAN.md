@@ -385,11 +385,14 @@ Foundation jest gotowy, gdy:
 
 
 ### Etap G — Performance & stability
-- [ ] baseline czasu odpowiedzi głównych modułów
-- [ ] ograniczenie zbędnych zapytań Supabase
-- [ ] cache dla danych agregowanych i wolnozmiennych
-- [ ] ograniczenie pełnych router.refresh / revalidate
-- [ ] loading / skeleton dla cięższych widoków
-- [ ] przegląd indeksów bazy
-- [ ] optymalizacja dashboardów work/private
+- [ ] baseline czasu odpowiedzi głównych modułów na docelowym deployu
+- [x] deduplikacja auth lookup per request
+- [x] deduplikacja i równoległe pobieranie profilu / permissions
+- [x] równoległe ładowanie app shell
+- [x] ograniczenie podwójnego router.refresh po rewalidowanych server actions
+- [x] loading / skeleton dla przejść między widokami
+- [x] przegląd indeksów bazy + migration 016 z indeksami hot queries
+- [x] Call Center KPI odseparowane przez Suspense od renderu dashboardu
+- [x] redukcja duplikowanego query zajęć na dashboardzie Prywatne
+- [ ] dalsza optymalizacja dashboardów work/private po pomiarze na deployu
 - [ ] finalny smoke test po optymalizacji
