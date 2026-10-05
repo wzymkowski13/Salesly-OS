@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Bell, CalendarClock, CalendarDays, CheckSquare2, Clock3, Gauge, Plus, RefreshCcw, Target, Users } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, CalendarDays, CheckSquare2, Clock3, Plus, RefreshCcw, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { todayInWarsaw, warsawDayRange } from "@/lib/date";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { getCallCenterSummary } from "@/lib/call-center-summary";
+import { CallCenterKpis, CallCenterKpisSkeleton } from "@/components/call-center-kpis";
 
 function priorityLabel(priority: string) {
   return priority === "urgent" ? "Pilne" : priority === "high" ? "Wysokie" : priority === "low" ? "Niskie" : "Normalne";
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
   const today = todayInWarsaw();
   const { start: dayStart, end: dayEnd } = warsawDayRange(today);
 
-  const [tasksRes, overdueRes, clientsRes, renewalsRes, anniversariesRes, eventsRes, notificationsRes, activityRes, callCenterSummary] = await Promise.all([
+  const [tasksRes, overdueRes, clientsRes, renewalsRes, anniversariesRes, eventsRes, notificationsRes, activityRes] = await Promise.all([
     supabase.from("tasks").select("id,title,status,priority,due_date,due_time,clients(name)").eq("assigned_to", user.id).eq("scope", "work").eq("due_date", today).neq("status", "done").order("due_time"),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", user.id).eq("scope", "work").lt("due_date", today).neq("status", "done"),
     supabase.from("clients").select("id", { count: "exact", head: true }).is("archived_at", null).eq("status", "active"),
@@ -30,7 +31,6 @@ export default async function DashboardPage() {
     supabase.from("events").select("id,title,starts_at,event_type,clients(name)").eq("scope", "work").gte("starts_at", dayStart).lte("starts_at", dayEnd).order("starts_at").limit(12),
     supabase.from("notifications").select("id,title,body,href,created_at,read_at").eq("user_id", user.id).is("read_at", null).order("created_at", { ascending: false }).limit(5),
     supabase.from("activities").select("id,title,activity_type,occurred_at,clients(id,name)").order("occurred_at", { ascending: false }).limit(5),
-    getCallCenterSummary(),
   ]);
 
   const tasks = tasksRes.data || [];
@@ -52,20 +52,9 @@ export default async function DashboardPage() {
     />
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-      <StatCard
-        label="Leady dziś"
-        value={callCenterSummary.leadsToday ?? "—"}
-        hint={callCenterSummary.status === "ok" ? "Call Center Panel" : callCenterSummary.status === "unconfigured" ? "integracja jeszcze niepodłączona" : "panel chwilowo niedostępny"}
-        icon={Target}
-        tone="green"
-      />
-      <StatCard
-        label="Efektywność dziś"
-        value={callCenterSummary.efficiencyToday === null ? "—" : `${(callCenterSummary.efficiencyToday * 100).toFixed(1)}%`}
-        hint={callCenterSummary.status === "ok" ? "Call Center Panel" : callCenterSummary.status === "unconfigured" ? "integracja jeszcze niepodłączona" : "panel chwilowo niedostępny"}
-        icon={Gauge}
-        tone="blue"
-      />
+      <Suspense fallback={<CallCenterKpisSkeleton/>}>
+        <CallCenterKpis/>
+      </Suspense>
       <StatCard label="Zadania na dziś" value={tasks.length} hint={`${overdueRes.count || 0} po terminie`} icon={CheckSquare2} tone="blue"/>
       <StatCard label="Spotkania dziś" value={meetings.length} hint="z klientami" icon={CalendarClock} tone="green"/>
       <StatCard label="Odnowienia" value={renewals.length} hint="w ciągu 60 dni" icon={RefreshCcw} tone="amber"/>
