@@ -38,7 +38,7 @@ HTTP 200:
 ```json
 {
   "leads_today": 14,
-  "efficiency_today": 0.92,
+  "efficiency_today": 1.42,
   "generated_at": "2026-10-05T10:00:00Z"
 }
 ```
@@ -46,7 +46,7 @@ HTTP 200:
 Fields:
 
 - `leads_today`: integer >= 0; number of leads counted by the Call Center Panel for the current business day.
-- `efficiency_today`: decimal from 0 to 1. `0.92` means 92%. Salesly OS also tolerates values from 1 to 100 for compatibility.
+- `efficiency_today`: efektywność operacyjna w leadach / RBH, np. `1.42` oznacza 1,42 zaakceptowanego leada na godzinę pracy.
 - `generated_at`: optional ISO 8601 timestamp.
 
 ## Failure behaviour
@@ -70,7 +70,7 @@ if (request.headers.authorization !== `Bearer ${process.env.OS_SUMMARY_TOKEN}`) 
 }
 
 const leadsToday = await countAcceptedLeadsForToday();
-const efficiencyToday = await calculateEfficiencyForToday();
+const efficiencyToday = await calculateAcceptedLeadsPerWorkHourForToday();
 
 return Response.json({
   leads_today: leadsToday,
