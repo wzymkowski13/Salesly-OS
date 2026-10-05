@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { pl } from "date-fns/locale";
-import { BarChart3, Building2, Calculator, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, Sparkles, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { BadgeCheck, BarChart3, Building2, Calculator, ChevronLeft, ChevronRight, CircleDollarSign, FileUp, Plus, ReceiptText, Settings2, Sparkles, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInWarsaw } from "@/lib/date";
-import { createFinanceCategory, createFinanceClassificationRule, createFinanceSource, deleteFinanceClassificationRule, deleteFinanceTransaction, saveFinanceTaxProfile, toggleFinanceClassificationRule, updateFinanceTransaction } from "@/lib/actions/finance";
+import { createFinanceCategory, createFinanceClassificationRule, createFinanceSource, deleteFinanceClassificationRule, deleteFinanceTransaction, saveFinanceMonthlySettlement, saveFinanceTaxProfile, toggleFinanceClassificationRule, updateFinanceTransaction } from "@/lib/actions/finance";
 import { FinanceTransactionEditForm, FinanceTransactionForm } from "@/components/finance-transaction-form";
 import { FinanceImportPanel } from "@/components/finance-import-panel";
 import { SectionHeader } from "@/components/section-header";
@@ -62,6 +62,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     taxProfileResult,
     analyticsResult,
     classificationRulesResult,
+    settlementResult,
   ] = await Promise.all([
     supabase
       .from("finance_transactions")
@@ -86,6 +87,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       .eq("user_id", user.id)
       .order("priority", { ascending: true })
       .order("created_at", { ascending: true }),
+    supabase.from("finance_monthly_settlements")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("period_month", `${requestedMonth}-01`)
+      .maybeSingle(),
   ]);
 
   if (transactionsError || sourcesError || categoriesError) {
@@ -104,7 +110,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const importReady = !importBatchesError;
   const taxReady = !taxProfileResult.error;
   const rulesReady = !classificationRulesResult.error;
+  const settlementReady = !settlementResult.error;
   const classificationRules = classificationRulesResult.data || [];
+  const settlement = settlementResult.data as any;
   const taxProfile = taxProfileResult.data as any;
   const analyticsRows = analyticsResult.data || [];
   const rows = transactions || [];
@@ -129,6 +137,31 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const estimatedTax = taxProfile ? taxableBase * taxRate / 100 : 0;
   const estimatedBusinessNet = taxProfile
     ? businessIncome - businessExpenses - socialZus - healthContribution - estimatedTax
+    : null;
+
+  const settlementRecordedExpenses = expenseRows
+    .filter((row:any) =>
+      row.scope === "business"
+      && ["Podatki","ZUS"].includes(String(row.finance_categories?.name || ""))
+    )
+    .reduce((sum:number,row:any) => sum + Number(row.amount || 0), 0);
+  const operatingBusinessExpenses = Math.max(0, businessExpenses - settlementRecordedExpenses);
+  const actualPublicCharges = settlement
+    ? Number(settlement.actual_income_tax || 0)
+      + Number(settlement.actual_social_zus || 0)
+      + Number(settlement.actual_health_contribution || 0)
+      + Number(settlement.actual_vat || 0)
+      + Number(settlement.other_public_charges || 0)
+    : 0;
+  const confirmedBusinessNet = settlement
+    ? businessIncome
+      + Number(settlement.unrecorded_income || 0)
+      - operatingBusinessExpenses
+      - Number(settlement.unrecorded_costs || 0)
+      - actualPublicCharges
+    : null;
+  const confirmedVsEstimate = confirmedBusinessNet !== null && estimatedBusinessNet !== null
+    ? confirmedBusinessNet - estimatedBusinessNet
     : null;
 
   const monthlyStats = Array.from({ length: 13 }, (_, index) => {
@@ -226,6 +259,53 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     <div className="md:col-span-2 flex justify-end"><Button type="submit">Zapisz założenia</Button></div>
   </ActionForm> : <div className="text-sm text-amber-700">Uruchom migrację 011, aby włączyć kalkulator netto.</div>;
 
+  const settlementForm = settlementReady ? <ActionForm
+    action={saveFinanceMonthlySettlement}
+    successMessage="Wynik miesiąca zatwierdzony"
+    className="grid gap-4 md:grid-cols-2"
+  >
+    <input type="hidden" name="period_month" value={requestedMonth}/>
+    <div className="md:col-span-2 rounded-xl bg-[#edf7f1] px-3 py-2.5 text-xs leading-5 text-[#527061]">
+      Wpisz rzeczywiste wartości z rozliczenia miesiąca. Transakcje zakwalifikowane jako <strong>Podatki</strong> lub <strong>ZUS</strong> są zastępowane poniższymi kwotami, żeby ich nie dublować.
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Podatek dochodowy PIT/CIT</label>
+      <Input name="actual_income_tax" type="number" min="0" step="0.01" defaultValue={Number(settlement?.actual_income_tax ?? estimatedTax).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">ZUS społeczny</label>
+      <Input name="actual_social_zus" type="number" min="0" step="0.01" defaultValue={Number(settlement?.actual_social_zus ?? socialZus).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Składka zdrowotna</label>
+      <Input name="actual_health_contribution" type="number" min="0" step="0.01" defaultValue={Number(settlement?.actual_health_contribution ?? healthContribution).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">VAT do zapłaty</label>
+      <Input name="actual_vat" type="number" min="0" step="0.01" defaultValue={Number(settlement?.actual_vat ?? 0).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Inne obciążenia publiczne</label>
+      <Input name="other_public_charges" type="number" min="0" step="0.01" defaultValue={Number(settlement?.other_public_charges ?? 0).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Koszty nieujęte w OS</label>
+      <Input name="unrecorded_costs" type="number" min="0" step="0.01" defaultValue={Number(settlement?.unrecorded_costs ?? 0).toFixed(2)}/>
+    </div>
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Przychody nieujęte w OS</label>
+      <Input name="unrecorded_income" type="number" min="0" step="0.01" defaultValue={Number(settlement?.unrecorded_income ?? 0).toFixed(2)}/>
+    </div>
+    <div className="md:col-span-2">
+      <label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Notatka do rozliczenia</label>
+      <Textarea name="notes" rows={3} defaultValue={settlement?.notes || ""} placeholder="Np. wartości z rozliczenia księgowej za miesiąc"/>
+    </div>
+    <div className="md:col-span-2 rounded-xl bg-[#f7f9fc] px-3 py-2 text-[11px] leading-5 text-[#72818c]">
+      Wynik zatwierdzony = przychody firmowe + korekty przychodów − koszty operacyjne − korekty kosztów − rzeczywiste podatki i składki.
+    </div>
+    <div className="md:col-span-2 flex justify-end"><Button type="submit"><BadgeCheck size={15}/> {settlement ? "Zapisz rozliczenie ponownie" : "Zatwierdź wynik miesiąca"}</Button></div>
+  </ActionForm> : <div className="text-sm text-amber-700">Uruchom migrację 017, aby włączyć zatwierdzanie miesięcznego wyniku netto.</div>;
+
   const addRuleForm = rulesReady ? <ActionForm
     action={createFinanceClassificationRule}
     successMessage="Reguła klasyfikacji dodana"
@@ -318,28 +398,50 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>
 
     <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
-      <Card className={taxProfile ? "border-emerald-200" : ""}>
+      <Card className={settlement ? "border-emerald-300" : taxProfile ? "border-emerald-200" : ""}>
         <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><Calculator size={18}/></div>
-            <div><h2 className="font-bold text-[#2a3944]">Netto firmy — estymacja</h2><div className="text-xs text-[#83909b]">na podstawie bieżącego miesiąca</div></div>
+            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">{settlement ? <BadgeCheck size={18}/> : <Calculator size={18}/>}</div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2"><h2 className="font-bold text-[#2a3944]">Wynik netto firmy</h2>{settlement && <Badge variant="green">Zatwierdzony</Badge>}</div>
+              <div className="text-xs text-[#83909b]">{settlement ? "rzeczywiste rozliczenie miesiąca" : "prognoza do czasu zatwierdzenia rozliczenia"}</div>
+            </div>
           </div>
-          <FormDisclosure label="Założenia" compact variant="secondary" align="right">{taxProfileForm}</FormDisclosure>
+          <div className="flex flex-wrap gap-2">
+            <FormDisclosure label="Założenia" compact variant="secondary" align="right">{taxProfileForm}</FormDisclosure>
+            <FormDisclosure label={settlement ? "Rozliczenie" : "Zatwierdź miesiąc"} compact variant={settlement ? "secondary" : "primary"} align="right">{settlementForm}</FormDisclosure>
+          </div>
         </CardHeader>
         <CardContent>
-          {taxProfile ? <div className="space-y-4">
+          {settlement && confirmedBusinessNet !== null ? <div className="space-y-4">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#8795a1]">Szacowane netto</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-emerald-700">Zatwierdzone netto</div>
+              <div className={cn("mt-1 text-3xl font-black tracking-[-0.04em]", confirmedBusinessNet >= 0 ? "text-emerald-600" : "text-red-600")}>{money(confirmedBusinessNet)}</div>
+              <div className="mt-1 text-[11px] text-[#8996a0]">zatwierdzono {new Intl.DateTimeFormat("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(settlement.confirmed_at))}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Koszty operacyjne</div><div className="mt-1 font-bold text-[#40515d]">{money(operatingBusinessExpenses)}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Podatek dochodowy</div><div className="mt-1 font-bold text-[#40515d]">{money(Number(settlement.actual_income_tax || 0))}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(Number(settlement.actual_social_zus || 0) + Number(settlement.actual_health_contribution || 0))}</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">VAT + inne</div><div className="mt-1 font-bold text-[#40515d]">{money(Number(settlement.actual_vat || 0) + Number(settlement.other_public_charges || 0))}</div></div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#edf7f1] px-3 py-2 text-[11px] text-[#527061]">
+              <span>Prognoza systemu: {estimatedBusinessNet === null ? "—" : money(estimatedBusinessNet)}</span>
+              {confirmedVsEstimate !== null && <span className="font-bold">różnica: {confirmedVsEstimate >= 0 ? "+" : ""}{money(confirmedVsEstimate)}</span>}
+            </div>
+          </div> : taxProfile ? <div className="space-y-4">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#8795a1]">Prognoza netto</div>
               <div className={cn("mt-1 text-3xl font-black tracking-[-0.04em]", Number(estimatedBusinessNet || 0) >= 0 ? "text-emerald-600" : "text-red-600")}>{money(Number(estimatedBusinessNet || 0))}</div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Przychód firmowy</div><div className="mt-1 font-bold text-[#40515d]">{money(businessIncome)}</div></div>
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Koszty firmowe</div><div className="mt-1 font-bold text-[#40515d]">{money(businessExpenses)}</div></div>
               <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">Podatek est.</div><div className="mt-1 font-bold text-[#40515d]">{money(estimatedTax)}</div></div>
-              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(socialZus + healthContribution)}</div><div className="mt-0.5 text-[10px] text-[#8a98a3]">zdrowotna: {healthContributionRate}% dochodu</div></div>
+              <div className="rounded-xl bg-[#f7f9fc] p-3"><div className="text-[#8996a0]">ZUS + zdrowotna</div><div className="mt-1 font-bold text-[#40515d]">{money(socialZus + healthContribution)}</div></div>
             </div>
-            <div className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">Estymacja do planowania cashflow — nie wynik księgowy ani wyliczenie deklaracji.</div>
-          </div> : <EmptyState title="Ustaw założenia" description="Podaj stawkę podatku i miesięczne składki, a OS zacznie liczyć orientacyjne netto firmy."/>}
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">To prognoza. Po otrzymaniu rzeczywistych wartości z księgowości użyj „Zatwierdź miesiąc”, aby zapisać dokładny wynik.</div>
+          </div> : <EmptyState title="Ustaw założenia" description="Podaj stawkę podatku i miesięczne składki, a OS zacznie liczyć prognozę netto firmy."/>}
         </CardContent>
       </Card>
 
