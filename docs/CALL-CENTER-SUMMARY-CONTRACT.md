@@ -29,7 +29,7 @@ If `CALL_CENTER_SUMMARY_TOKEN` is configured, Salesly OS sends:
 Authorization: Bearer <shared-secret>
 ```
 
-The panel should return `401` for a missing or invalid token.
+Salesly OS also sends `X-Salesly-OS-Token: <shared-secret>` as a WordPress-hosting-safe fallback when the server strips the `Authorization` header. The panel should return `401` for a missing or invalid token.
 
 ## Response
 
