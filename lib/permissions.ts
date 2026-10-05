@@ -123,11 +123,17 @@ export function defaultRouteForPermissions(permissionSet: Set<string>, preferred
 const getUserAccessCached = cache(async (userId: string) => {
   const admin = createAdminClient();
 
-  const profileResult = await admin
-    .from("profiles")
-    .select("id,email,full_name,is_active,onboarding_completed_at,preferred_workspace,created_at")
-    .eq("id", userId)
-    .maybeSingle();
+  const [profileResult, permissionResult] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id,email,full_name,is_active,onboarding_completed_at,preferred_workspace,created_at")
+      .eq("id", userId)
+      .maybeSingle(),
+    admin
+      .from("user_permissions")
+      .select("permission_key")
+      .eq("user_id", userId),
+  ]);
 
   let profile = profileResult.data as any;
   if (profileResult.error) {
@@ -145,10 +151,7 @@ const getUserAccessCached = cache(async (userId: string) => {
       : null;
   }
 
-  const { data: permissionRows } = await admin
-    .from("user_permissions")
-    .select("permission_key")
-    .eq("user_id", userId);
+  const permissionRows = permissionResult.data;
 
   const permissions = new Set((permissionRows || []).map(row => String(row.permission_key)));
   return {
