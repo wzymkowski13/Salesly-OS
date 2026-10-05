@@ -11,7 +11,7 @@ export function ActionForm({
   successMessage,
   errorMessage = "Nie udało się wykonać akcji.",
   resetOnSuccess = false,
-  refreshOnSuccess = true,
+  refreshOnSuccess = false,
   className,
   children,
 }: {
