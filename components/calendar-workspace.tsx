@@ -43,9 +43,12 @@ const pointerFirstCollision: CollisionDetection = (args) => {
   return pointerHits.length ? pointerHits : rectIntersection(args);
 };
 
+export type CalendarScope = "work" | "private" | "study";
+
 export type CalendarItem = {
   id: string;
   kind: "task" | "event" | "study";
+  scope?: CalendarScope;
   title: string;
   description?: string | null;
   calendar_date: string;
@@ -68,16 +71,20 @@ export type CalendarItem = {
 };
 
 function itemStyle(item: CalendarItem) {
-  if (item.kind === "study") {
-    if (item.attendance_status === "cancelled") return "border-[#e0e3e7] border-l-[#aab3bb] bg-[#f4f5f6] text-[#7f8a92] opacity-75";
-    return "border-violet-100 border-l-violet-500 bg-violet-50/80 text-violet-800";
+  if (item.kind === "study" && item.attendance_status === "cancelled") {
+    return "border-[#e0e3e7] border-l-[#aab3bb] bg-[#f4f5f6] text-[#7f8a92] opacity-75";
   }
-  if (item.kind === "task") return "border-[#e2e8ef] border-l-[#9aa9b6] bg-[#f6f8fa] text-[#52636f]";
-  if (item.event_type === "meeting") return "border-[#d9e6ff] border-l-[#568deb] bg-[#edf3ff] text-[#3768d1]";
-  if (item.event_type === "call") return "border-emerald-100 border-l-emerald-500 bg-emerald-50/80 text-emerald-700";
-  if (item.event_type === "follow_up") return "border-amber-100 border-l-amber-500 bg-amber-50/80 text-amber-700";
-  if (item.event_type === "private") return "border-violet-100 border-l-violet-500 bg-violet-50/80 text-violet-700";
-  return "border-sky-100 border-l-sky-500 bg-sky-50/80 text-sky-700";
+  if (item.scope === "work") return "border-blue-100 border-l-blue-500 bg-blue-50/85 text-blue-800";
+  if (item.scope === "private") return "border-emerald-100 border-l-emerald-500 bg-emerald-50/85 text-emerald-800";
+  if (item.scope === "study" || item.kind === "study") return "border-violet-100 border-l-violet-500 bg-violet-50/85 text-violet-800";
+  return "border-[#e2e8ef] border-l-[#9aa9b6] bg-[#f6f8fa] text-[#52636f]";
+}
+
+function scopeLabel(scope?: CalendarScope) {
+  if (scope === "work") return "Służbowe";
+  if (scope === "private") return "Prywatne";
+  if (scope === "study") return "Studia";
+  return null;
 }
 
 function itemLabel(item: CalendarItem) {
@@ -119,6 +126,7 @@ function CalendarItemContent({ item, compact = false, overlay = false }: { item:
     <div className="flex items-center justify-between gap-2">
       <div className="text-xs font-bold opacity-75">{item.start_time}</div>
       <div className="flex items-center gap-1">
+        {item.scope && <Badge className="bg-white/70" variant="neutral">{scopeLabel(item.scope)}</Badge>}
         <Badge className="bg-white/70" variant={item.kind === "task" ? "neutral" : "blue"}>{itemLabel(item)}</Badge>
         <GripVertical size={13} className={cn(overlay ? "opacity-60" : "opacity-0 transition group-hover:opacity-60")}/>
       </div>
@@ -162,6 +170,7 @@ export function CalendarWorkspace({
   initialItems,
   clients,
   profiles,
+  visibleScopes = ["work","private","study"],
 }: {
   view: "day"|"week"|"month";
   days: string[];
@@ -170,6 +179,7 @@ export function CalendarWorkspace({
   initialItems: CalendarItem[];
   clients: ClientOption[];
   profiles: ProfileOption[];
+  visibleScopes?: CalendarScope[];
 }) {
   const [items, setItems] = useState(initialItems);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -211,6 +221,7 @@ export function CalendarWorkspace({
         client_id: clientId,
         clients: clientId ? { name: clients.find(client => client.id === clientId)?.name || "" } : null,
         event_type: String(values.event_type || "other"),
+        scope: (String(values.scope || "private") as CalendarScope),
       };
 
       setItems(current => current.some(candidate => candidate.id === item.id) ? current : [...current, item]);
@@ -484,6 +495,14 @@ export function CalendarWorkspace({
       {overlay}
     </DndContext>
 
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-[#e5eaf0] bg-white px-4 py-3 text-xs font-semibold text-[#657580]">
+      <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#98a4ad]">Legenda</span>
+      {visibleScopes.includes("work") && <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-blue-500"/> Służbowe</span>}
+      {visibleScopes.includes("private") && <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500"/> Prywatne</span>}
+      {visibleScopes.includes("study") && <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-violet-500"/> Studia</span>}
+      <span className="ml-auto text-[11px] font-normal text-[#93a0aa]">Kolor oznacza obszar, badge — typ pozycji.</span>
+    </div>
+
     <Modal
       open={Boolean(expandedDate)}
       onClose={() => setExpandedDate(null)}
@@ -530,6 +549,7 @@ export function CalendarWorkspace({
       {selected?.kind === "event" && <form key={`event-${selected.id}`} onSubmit={event => { event.preventDefault(); saveSelected(new FormData(event.currentTarget)); }} className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2"><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Tytuł</label><Input name="title" required defaultValue={selected.title}/></div>
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Data</label><Input name="date" type="date" required defaultValue={selected.calendar_date}/></div>
+        <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Obszar</label><Select name="scope" defaultValue={selected.scope || "private"}>{visibleScopes.includes("work") && <option value="work">Służbowe</option>}{visibleScopes.includes("private") && <option value="private">Prywatne</option>}{visibleScopes.includes("study") && <option value="study">Studia</option>}</Select></div>
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Typ</label><Select name="event_type" defaultValue={selected.event_type || "other"}><option value="meeting">Spotkanie</option><option value="call">Telefon</option><option value="follow_up">Follow-up</option><option value="private">Prywatne</option><option value="other">Inne</option></Select></div>
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Od</label><TimePicker name="start_time" defaultValue={selected.start_time} required/></div>
         <div><label className="mb-1.5 block text-xs font-semibold text-[#6f7d89]">Do</label><TimePicker name="end_time" defaultValue={selected.end_time} optional/></div>
