@@ -406,6 +406,41 @@ function nonNegativeNumber(formData: FormData, key: string, fallback = 0) {
   return Math.round(value * 1000) / 1000;
 }
 
+export async function saveFinanceMonthlySettlement(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const month = textValue(formData, "period_month");
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new Error("Nieprawidłowy miesiąc rozliczenia.");
+
+  const payload = {
+    user_id: user.id,
+    period_month: `${month}-01`,
+    actual_income_tax: nonNegativeNumber(formData, "actual_income_tax", 0),
+    actual_social_zus: nonNegativeNumber(formData, "actual_social_zus", 0),
+    actual_health_contribution: nonNegativeNumber(formData, "actual_health_contribution", 0),
+    actual_vat: nonNegativeNumber(formData, "actual_vat", 0),
+    other_public_charges: nonNegativeNumber(formData, "other_public_charges", 0),
+    unrecorded_costs: nonNegativeNumber(formData, "unrecorded_costs", 0),
+    unrecorded_income: nonNegativeNumber(formData, "unrecorded_income", 0),
+    notes: optionalText(formData, "notes"),
+    confirmed_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("finance_monthly_settlements")
+    .upsert(payload, { onConflict: "user_id,period_month" });
+
+  if (error) throw new Error(error.message);
+  revalidateFinance();
+
+  return {
+    ok: true,
+    message: "Wynik miesiąca zatwierdzony",
+    description: "Finanse używają teraz rzeczywistych obciążeń i korekt tego miesiąca.",
+  };
+}
+
 export async function saveFinanceTaxProfile(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
