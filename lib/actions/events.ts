@@ -25,7 +25,9 @@ function eventPayload(formData: FormData) {
 
 function revalidateEventViews() {
   revalidatePath("/calendar");
+  revalidatePath("/private/calendar");
   revalidatePath("/dashboard");
+  revalidatePath("/private");
 }
 
 export async function createEvent(formData: FormData) {
