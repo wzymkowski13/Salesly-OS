@@ -20,7 +20,8 @@
     "tailwind-merge": "latest",
     "date-fns-tz": "3.2.0",
     "@dnd-kit/core": "^6.3.1",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "@vercel/speed-insights": "latest"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
