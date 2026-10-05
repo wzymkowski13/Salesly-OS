@@ -107,6 +107,26 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
     <div className="md:col-span-2 flex justify-end"><Button type="submit"><Plus size={15}/> Dodaj przedmiot</Button></div>
   </form>;
 
+  const syncHistoryContent = <div className="space-y-2">
+    <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[#7d8c97]"><History size={14}/> Ostatnie próby synchronizacji USOS</div>
+    {(syncRuns || []).map((run:any) => <div key={run.id} className="flex flex-col gap-2 rounded-xl border border-[#edf1f5] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={run.status === "success" ? "green" : run.status === "error" ? "red" : "amber"}>{run.status === "success" ? "Sukces" : run.status === "error" ? "Błąd" : "W trakcie"}</Badge>
+          <span className="text-sm font-semibold text-[#40515d]">{lastSyncLabel(run.finished_at || run.started_at)}</span>
+        </div>
+        {run.status === "error" && run.error_message && <div className="mt-1 max-w-3xl truncate text-xs text-red-600">{run.error_message}</div>}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-[#6f7f8b]">
+        <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.subjects_count || 0} przedm.</span>
+        <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.classes_count || 0} zajęć</span>
+        {Number(run.updated_count || 0) > 0 && <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-700">{run.updated_count} aktualizacji</span>}
+        {Number(run.cancelled_count || 0) > 0 && <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">{run.cancelled_count} odwołanych</span>}
+      </div>
+    </div>)}
+    {!(syncRuns || []).length && <EmptyState title="Brak historii" description="Pierwsza synchronizacja pojawi się tutaj po uruchomieniu."/>}
+  </div>;
+
   return <div className="space-y-7">
     <SectionHeader
       title="Studia"
@@ -126,7 +146,10 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
             <div className="text-xs text-[#83909b]">Automatyczny plan studiów, przedmioty, sale i ECTS</div>
           </div>
         </div>
-        {usosConnection && <Badge variant={usosConnection.last_sync_status === "error" ? "red" : "green"}>{usosConnection.last_sync_status === "error" ? "Błąd synchronizacji" : "Połączono"}</Badge>}
+        {usosConnection && <div className="flex items-center gap-2">
+          <Badge variant={usosConnection.last_sync_status === "error" ? "red" : "green"}>{usosConnection.last_sync_status === "error" ? "Błąd synchronizacji" : "Połączono"}</Badge>
+          <FormDisclosure label="Historia" compact variant="secondary" align="right">{syncHistoryContent}</FormDisclosure>
+        </div>}
       </CardHeader>
 
       <CardContent>
@@ -175,33 +198,6 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
         </div>}
       </CardContent>
     </Card>
-
-    {usosConnection && <Card>
-      <CardHeader className="flex-col items-start sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-[#f4f7fa] p-2.5 text-[#627482]"><History size={18}/></div>
-          <div><h2 className="font-bold text-[#2a3944]">Historia synchronizacji</h2><div className="text-xs text-[#83909b]">ostatnie próby pobrania planu z USOS</div></div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {(syncRuns || []).map((run:any) => <div key={run.id} className="flex flex-col gap-2 rounded-xl border border-[#edf1f5] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={run.status === "success" ? "green" : run.status === "error" ? "red" : "amber"}>{run.status === "success" ? "Sukces" : run.status === "error" ? "Błąd" : "W trakcie"}</Badge>
-              <span className="text-sm font-semibold text-[#40515d]">{lastSyncLabel(run.finished_at || run.started_at)}</span>
-            </div>
-            {run.status === "error" && run.error_message && <div className="mt-1 max-w-3xl truncate text-xs text-red-600">{run.error_message}</div>}
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs text-[#6f7f8b]">
-            <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.subjects_count || 0} przedm.</span>
-            <span className="rounded-lg bg-[#f6f8fa] px-2.5 py-1.5">{run.classes_count || 0} zajęć</span>
-            {Number(run.updated_count || 0) > 0 && <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-700">{run.updated_count} aktualizacji</span>}
-            {Number(run.cancelled_count || 0) > 0 && <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">{run.cancelled_count} odwołanych</span>}
-          </div>
-        </div>)}
-        {!(syncRuns || []).length && <EmptyState title="Brak historii" description="Pierwsza synchronizacja pojawi się tutaj po uruchomieniu."/>}
-      </CardContent>
-    </Card>}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Przedmioty" value={activeSubjects.length} hint="aktywnych" icon={BookOpenCheck} tone="blue"/>
