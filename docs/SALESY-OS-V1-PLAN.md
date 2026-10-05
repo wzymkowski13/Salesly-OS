@@ -286,9 +286,12 @@ Miesiąc / kwartał / rok:
 - dashboard i analityka
 
 ### Etap E — Call Center summary
-- prosty endpoint w salesly.pl/panel
-- leady dziś
-- efektywność dziś
+- [x] klient API po stronie Salesly OS
+- [x] leady dziś na dashboardzie służbowym
+- [x] efektywność dziś na dashboardzie służbowym
+- [x] timeout / cache / miękki fallback bez blokowania dashboardu
+- [x] kontrakt endpointu i zmienne środowiskowe
+- [ ] endpoint GET /api/os-summary po stronie salesly.pl/panel (repo panelu niepodłączone do obecnej integracji GitHub)
 
 ### Etap F — Users & permissions UI
 - [x] dodawanie użytkowników przez przygotowany dostęp e-mail
@@ -379,3 +382,14 @@ Foundation jest gotowy, gdy:
 - [x] informacja, która reguła zadziałała
 - [x] tworzenie reguły z konkretnej pozycji importu
 - [x] włączanie / wyłączanie / usuwanie reguł
+
+
+### Etap G — Performance & stability
+- [ ] baseline czasu odpowiedzi głównych modułów
+- [ ] ograniczenie zbędnych zapytań Supabase
+- [ ] cache dla danych agregowanych i wolnozmiennych
+- [ ] ograniczenie pełnych router.refresh / revalidate
+- [ ] loading / skeleton dla cięższych widoków
+- [ ] przegląd indeksów bazy
+- [ ] optymalizacja dashboardów work/private
+- [ ] finalny smoke test po optymalizacji
