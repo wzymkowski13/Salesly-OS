@@ -5,14 +5,6 @@ export type CallCenterSummary = {
   generatedAt: string | null;
 };
 
-function normalizeEfficiency(value: unknown) {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) return null;
-  if (number > 1 && number <= 100) return number / 100;
-  if (number > 100) return null;
-  return number;
-}
-
 export async function getCallCenterSummary(): Promise<CallCenterSummary> {
   const url = String(process.env.CALL_CENTER_SUMMARY_URL || "").trim();
   const token = String(process.env.CALL_CENTER_SUMMARY_TOKEN || "").trim();
@@ -44,16 +36,21 @@ export async function getCallCenterSummary(): Promise<CallCenterSummary> {
 
     const payload = await response.json();
     const leadsToday = Number(payload?.leads_today);
-    const efficiencyToday = normalizeEfficiency(payload?.efficiency_today);
+    const efficiencyToday = Number(payload?.efficiency_today);
 
-    if (!Number.isFinite(leadsToday) || leadsToday < 0 || efficiencyToday === null) {
+    if (
+      !Number.isFinite(leadsToday)
+      || leadsToday < 0
+      || !Number.isFinite(efficiencyToday)
+      || efficiencyToday < 0
+    ) {
       throw new Error("Invalid Call Center summary payload");
     }
 
     return {
       status: "ok",
       leadsToday: Math.round(leadsToday),
-      efficiencyToday,
+      efficiencyToday: Math.round(efficiencyToday * 100) / 100,
       generatedAt: typeof payload?.generated_at === "string" ? payload.generated_at : null,
     };
   } catch {
