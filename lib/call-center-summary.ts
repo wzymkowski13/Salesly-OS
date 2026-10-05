@@ -26,7 +26,7 @@ export async function getCallCenterSummary(): Promise<CallCenterSummary> {
       method: "GET",
       headers: {
         Accept: "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}`, "X-Salesly-OS-Token": token } : {}),
       },
       signal: controller.signal,
       next: { revalidate: 45 },
