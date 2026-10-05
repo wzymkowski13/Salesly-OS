@@ -32,8 +32,11 @@ function taskPayload(formData: FormData, fallbackUserId: string) {
 
 function revalidateTaskViews() {
   revalidatePath("/tasks");
+  revalidatePath("/private/tasks");
   revalidatePath("/calendar");
+  revalidatePath("/private/calendar");
   revalidatePath("/dashboard");
+  revalidatePath("/private");
 }
 
 export async function createTask(formData: FormData) {
