@@ -233,7 +233,10 @@ export function CalendarWorkspace({
 
   function openItem(item: CalendarItem) {
     if (item.kind === "study" && item.subject_id) {
-      router.push(`/private/study/${item.subject_id}/classes/${item.id}`);
+      const returnTo = typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "/private/calendar";
+      router.push(`/private/study/${item.subject_id}/classes/${item.id}?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
     setSelectedKey(`${item.kind}:${item.id}`);
