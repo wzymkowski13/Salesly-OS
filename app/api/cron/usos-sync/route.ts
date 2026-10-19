@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const { data: connections, error } = await admin
     .from("usos_connections")
     .select("user_id")
+    .neq("last_sync_status", "reconnect_required")
     .order("connected_at");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
