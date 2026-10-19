@@ -85,6 +85,7 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
   const absent = activeSubjects.reduce((sum: number, subject: any) => sum + Number(subject.absent_count || 0), 0);
   const attendance = present + absent > 0 ? Math.round((present / (present + absent)) * 1000) / 10 : null;
   const syncSummary = usosConnection?.last_sync_summary || null;
+  const reconnectRequired = usosConnection?.last_sync_status === "reconnect_required";
   const typeFilters = [
     ["all", "Wszystkie"],
     ["lecture", "Wykłady"],
@@ -147,7 +148,9 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
           </div>
         </div>
         {usosConnection && <div className="flex items-center gap-2">
-          <Badge variant={usosConnection.last_sync_status === "error" ? "red" : "green"}>{usosConnection.last_sync_status === "error" ? "Błąd synchronizacji" : "Połączono"}</Badge>
+          <Badge variant={reconnectRequired || usosConnection.last_sync_status === "error" ? "red" : "green"}>
+            {reconnectRequired ? "Wymaga ponownego połączenia" : usosConnection.last_sync_status === "error" ? "Błąd synchronizacji" : "Połączono"}
+          </Badge>
           <FormDisclosure label="Historia" compact variant="secondary" align="right">{syncHistoryContent}</FormDisclosure>
         </div>}
       </CardHeader>
@@ -166,10 +169,10 @@ export default async function StudyPage({ searchParams }: { searchParams: Promis
               {Number(syncSummary.classes_created || 0) > 0 && <span className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-emerald-700">+{syncSummary.classes_created} nowych</span>}
               {Number(syncSummary.classes_cancelled || 0) > 0 && <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">{syncSummary.classes_cancelled} odwołanych</span>}
             </div>}
-            {syncSummary?.error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{String(syncSummary.error).slice(0, 300)}</div>}
+            {syncSummary?.error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{String(syncSummary.error).slice(0, 300)}{reconnectRequired && <span className="ml-1 font-semibold">Automatyczna synchronizacja ruszy ponownie po ponownym połączeniu.</span>}</div>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <ActionForm action={syncUsosNow} successMessage="Synchronizacja USOS zakończona"><Button type="submit"><RefreshCw size={15}/> Synchronizuj teraz</Button></ActionForm>
+            {reconnectRequired ? <a href={`/api/usos/connect?provider=${usosConnection.provider}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#4f84e7] bg-[#568deb] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(86,141,235,.18)] transition hover:bg-[#477ddd]"><Link2 size={15}/> Połącz ponownie</a> : <ActionForm action={syncUsosNow} successMessage="Synchronizacja USOS zakończona"><Button type="submit"><RefreshCw size={15}/> Synchronizuj teraz</Button></ActionForm>}
             <ActionForm action={disconnectUsos} successMessage="USOS został odłączony"><Button type="submit" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700"><Unlink size={15}/> Odłącz</Button></ActionForm>
           </div>
         </div> : <div>
