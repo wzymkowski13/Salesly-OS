@@ -213,6 +213,12 @@ export async function exchangeUsosAccessToken(
   return { token, secret };
 }
 
+export function isUsosInvalidAccessTokenError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return /USOS\s+\S+\s+401:/i.test(message)
+    && /(invalid access token|invalid token|token.*invalid|unauthorized)/i.test(message);
+}
+
 export async function usosGetJson<T = any>(
   provider: UsosProvider,
   path: string,
