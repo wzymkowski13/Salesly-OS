@@ -71,9 +71,20 @@ function attendanceLabel(status: string) {
   return "Nieoznaczone";
 }
 
-export default async function StudyClassPage({ params }: { params: Promise<{ subjectId: string; classId: string }> }) {
+export default async function StudyClassPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ subjectId: string; classId: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const user = await requireUser();
   const { subjectId, classId } = await params;
+  const query = await searchParams;
+  const requestedReturnTo = String(query.returnTo || "");
+  const returnToCalendar = requestedReturnTo.startsWith("/private/calendar")
+    || requestedReturnTo.startsWith("/calendar");
+  const backHref = returnToCalendar ? requestedReturnTo : `/private/study/${subjectId}`;
   const supabase = await createClient();
 
   const [{ data: subject }, { data: studyClass }, { data: grades }, { data: docs }, googleIntegration] = await Promise.all([
@@ -132,7 +143,7 @@ export default async function StudyClassPage({ params }: { params: Promise<{ sub
 
   return <div className="space-y-6">
     <div>
-      <Link href={`/private/study/${subjectId}`} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7d8a] transition hover:text-[#3f6fd0]"><ArrowLeft size={15}/> {subject.name}</Link>
+      <Link href={backHref} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7d8a] transition hover:text-[#3f6fd0]"><ArrowLeft size={15}/> {returnToCalendar ? "Kalendarz" : subject.name}</Link>
 
       <div className="rounded-[22px] border border-[#dfe6ee] bg-white px-5 py-5 shadow-[0_8px_28px_rgba(30,48,64,.035)] sm:px-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
