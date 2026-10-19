@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { warsawLocalToUtc } from "@/lib/date";
 import {
   getUsosConnectionWithSecrets,
+  isUsosInvalidAccessTokenError,
   type UsosProvider,
   usosGetJson,
 } from "@/lib/usos";
@@ -592,18 +593,28 @@ export async function syncUsosForUser(userId: string) {
 
     return summary;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Nieznany błąd synchronizacji USOS.";
+    const invalidToken = isUsosInvalidAccessTokenError(error);
+    const rawMessage = error instanceof Error ? error.message : "Nieznany błąd synchronizacji USOS.";
+    const message = invalidToken
+      ? "Połączenie z USOS wygasło lub zostało unieważnione. Połącz konto ponownie, aby wznowić automatyczną synchronizację."
+      : rawMessage;
     const finishedAt = new Date().toISOString();
+
     await admin.from("usos_connections").update({
       last_sync_at: finishedAt,
-      last_sync_status: "error",
-      last_sync_summary: { error: message },
+      last_sync_status: invalidToken ? "reconnect_required" : "error",
+      last_sync_summary: invalidToken
+        ? { error: message, code: "invalid_access_token" }
+        : { error: message },
     }).eq("user_id", userId);
+
     await admin.from("usos_sync_runs").update({
       status: "error",
       error_message: message.slice(0, 1000),
       finished_at: finishedAt,
     }).eq("id", run.id);
+
+    if (invalidToken) throw new Error(message);
     throw error;
   }
 }
