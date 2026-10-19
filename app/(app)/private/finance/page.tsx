@@ -407,12 +407,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               <div className="text-xs text-[#83909b]">{settlement ? "rzeczywiste rozliczenie miesiąca" : "prognoza do czasu zatwierdzenia rozliczenia"}</div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <FormDisclosure label="Założenia" compact variant="secondary" align="right">{taxProfileForm}</FormDisclosure>
-            <FormDisclosure label={settlement ? "Rozliczenie" : "Zatwierdź miesiąc"} compact variant={settlement ? "secondary" : "primary"} align="right">{settlementForm}</FormDisclosure>
-          </div>
+          <FormDisclosure label="Założenia" compact variant="secondary" align="right">{taxProfileForm}</FormDisclosure>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <FormDisclosure label={settlement ? "Rozliczenie miesiąca" : "Zatwierdź miesiąc"} compact variant={settlement ? "secondary" : "primary"} mode="inline">{settlementForm}</FormDisclosure>
+          </div>
           {settlement && confirmedBusinessNet !== null ? <div className="space-y-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-emerald-700">Zatwierdzone netto</div>
